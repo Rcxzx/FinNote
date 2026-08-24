@@ -12,7 +12,7 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f3f1f1;
+            background-color: #f5f5f7;
             color: #333;
             text-align: center;
         }
@@ -39,41 +39,37 @@
 <body>
 
 <div class="card">
-    <h2 id="status-title">กำลังเปิดระบบ...</h2>
+    <h2 id="status-title">กำลังเปิดบนเบราว์เซอร์หลัก...</h2>
     <p id="status-desc">หากหน้าต่างไม่เปิดอัตโนมัติ กรุณากดปุ่มด้านล่าง</p>
     <a id="redirect-btn" href="#" class="btn">เข้าสู่เว็บไซต์</a>
 </div>
 
 <script>
-    const targetGasUrl = "https://script.google.com/macros/s/AKfycbwks3Yu_ksxl0qNTPleL3ALr4guM16zq--CzEFXNFSmYn9zzMAv_G-F31FqYdzSHSMR/exec";
+    // 🔴 1. ใส่ลิงก์ Web App ของ Google Apps Script ที่นี่
+    const targetGasUrl = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const isLine = userAgent.indexOf("Line") > -1;
-    const isFB = userAgent.indexOf("FBAN") > -1 || userAgent.indexOf("FBAV") > -1;
-    const isInApp = isLine || isFB;
-
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
 
     const btn = document.getElementById("redirect-btn");
     const title = document.getElementById("status-title");
 
-        if (isAndroid) {
-            const cleanUrl = targetGasUrl.replace(/^https?:\/\//, "");
-            const intentUrl = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
-            btn.href = intentUrl;
-            window.location.href = intentUrl;
-        } else if (isIOS) {
-            const cleanUrl = targetGasUrl.replace(/^https?:\/\//, "");
-            const safariUrl = `x-safari-https://${cleanUrl}`;
-            btn.href = safariUrl;
-            title.innerText = "โปรดเปิดบน Safari";
-            window.location.href = safariUrl;
-        } else {
-            btn.href = targetGasUrl;
-            window.location.href = targetGasUrl;
-        }
-
+    if (isAndroid) {
+        const cleanUrl = targetGasUrl.replace(/^https?:\/\//, "");
+        const intentUrl = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
+        btn.href = intentUrl;
+        window.location.href = intentUrl;
+    } else if (isIOS) {
+        const cleanUrl = targetGasUrl.replace(/^https?:\/\//, "");
+        const safariUrl = `x-safari-https://${cleanUrl}`;
+        btn.href = safariUrl;
+        title.innerText = "โปรดเปิดบน Safari";
+        window.location.href = safariUrl;
+    } else {
+        btn.href = targetGasUrl;
+        window.location.href = targetGasUrl;
+    }
 </script>
 </body>
 </html>
