@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FinNote</title>
+  <script>
+    // ใช้ค่าที่ผู้ใช้ตั้งไว้ในเครื่อง (ถ้ามี) ไม่งั้นอิงตามการตั้งค่าของอุปกรณ์ — ทำก่อน CSS โหลดเพื่อไม่ให้จอกระพริบ
+    (function () {
+      try {
+        var stored = localStorage.getItem('moneyflow-theme');
+        var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', isDark);
+      } catch (e) {}
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans Thai', 'ui-sans-serif', 'system-ui'],
+          },
+          colors: {
+            ink: '#2c2618',
+            mint: '#3f6b52',
+            coral: '#a03f2c',
+            amber: '#a97a24',
+          },
+          boxShadow: {
+            soft: '0 18px 50px rgba(15, 23, 42, 0.10)',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700;800&family=Mali:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <?!= include('CSS'); ?>
+</head>
+<body class="antialiased">
+  <div id="toast" class="toast hidden"></div>
+
+  <main id="authScreen" class="auth-bg min-h-screen px-4 py-8 sm:px-6">
+    <div class="auth-book">
+      <div class="auth-page auth-page-left hidden lg:flex">
+        <span class="auth-tape" style="top:-.6rem;left:2.4rem;transform:rotate(-4deg);"></span>
+        <div>
+          <p class="auth-eyebrow">สมุดบันทึกเล่มนี้ชื่อ</p>
+          <h1 class="auth-title">FinNote</h1>
+          <p class="auth-sub">เปิดสมุดหน้าใหม่ ให้ทุกบาทของคุณมีที่ทางของมันเอง</p>
+        </div>
+
+        <ul class="auth-journal-list">
+          <li>
+            <span class="auth-journal-icon"><i data-lucide="pen-line"></i></span>
+            <span><strong>จดง่าย ทุกวัน</strong><small>บันทึกรายรับ-รายจ่ายในไม่กี่วินาที</small></span>
+          </li>
+          <li>
+            <span class="auth-journal-icon"><i data-lucide="flame"></i></span>
+            <span><strong>ต่อเนื่องเป็นนิสัย</strong><small>นับวันติดต่อกัน ให้กำลังใจทุกครั้งที่จด</small></span>
+          </li>
+          <li>
+            <span class="auth-journal-icon"><i data-lucide="mail-check"></i></span>
+            <span><strong>เตือนก่อนงบหมด</strong><small>อีเมลแจ้งก่อนใช้จ่ายเกินงบที่ตั้งไว้</small></span>
+          </li>
+        </ul>
+
+        <div class="auth-seal"><i data-lucide="feather"></i></div>
+      </div>
+
+      <div class="auth-book-spine hidden lg:block"></div>
+
+      <div class="auth-page auth-page-right">
+        <div class="auth-card">
+          <div class="mb-7 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="brand-mark">฿</div>
+              <div>
+                <h2 class="text-2xl font-extrabold">FinNote</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">เปิดสมุดบันทึกของคุณ</p>
+              </div>
+            </div>
+            <button id="authModeToggle" class="icon-chip" type="button">
+              <i data-lucide="user-plus"></i>
+              <span>สมัคร</span>
+            </button>
+          </div>
+
+          <form id="authForm" class="space-y-4">
+            <div id="displayNameWrap" class="hidden">
+              <label class="form-label" for="displayName">ชื่อบัญชี</label>
+              <input id="displayName" class="form-input" type="text" placeholder="เช่น Suvim">
+            </div>
+            <div>
+              <label class="form-label" for="email">อีเมล Gmail</label>
+              <input id="email" class="form-input" type="email" autocomplete="email" required placeholder="you@gmail.com">
+            </div>
+            <div>
+              <label class="form-label" for="password">รหัสผ่าน</label>
+              <input id="password" class="form-input" type="password" autocomplete="current-password" required minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร">
+            </div>
+            <div id="pinWrap" class="hidden">
+              <label class="form-label" for="emailPin">PIN ยืนยันอีเมล</label>
+              <input id="emailPin" class="form-input" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="กรอก PIN 6 หลัก">
+            </div>
+            <button id="authSubmit" class="primary-btn w-full" type="submit">
+              <i data-lucide="log-in"></i>
+              <span>เข้าสู่ระบบ</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="appShell" class="hidden min-h-screen">
+    <div class="app-content">
+      <header class="masthead-bar">
+        <div class="masthead-bar-inner">
+          <div class="brand">
+            <div class="brand-mark">฿</div>
+            <span class="text-base font-bold">FinNote</span>
+          </div>
+          <div class="profile-chip">
+            <button id="profileChipBtn" class="profile-chip-main" data-view="settings" type="button" title="ตั้งค่า">
+              <img id="profileAvatar" class="avatar" alt="Profile">
+              <div class="min-w-0 hidden sm:block">
+                <p id="profileName" class="truncate text-sm font-semibold"></p>
+                <p id="profileEmail" class="truncate text-xs" style="color:var(--text-soft)"></p>
+              </div>
+            </button>
+            <button id="themeToggle" class="ghost-icon" type="button" title="สลับโหมด" aria-label="สลับโหมด">
+              <i data-lucide="moon"></i>
+            </button>
+            <button id="logoutBtn" class="ghost-icon" type="button" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+              <i data-lucide="log-out"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="masthead">
+        <p id="todayLabel" class="eyebrow"></p>
+        <h1 id="viewTitle" class="masthead-title">แดชบอร์ด</h1>
+      </div>
+
+      <nav class="tabs-nav">
+        <button class="nav-item active" data-view="dashboard" type="button">แดชบอร์ด</button>
+        <button class="nav-item" data-view="transactions" type="button">ประวัติรายการ</button>
+        <button class="nav-item" data-view="budget" type="button">งบประมาณ</button>
+        <button class="nav-item" data-view="savings" type="button">เงินออม</button>
+        <button class="nav-item" data-view="recurring" type="button">รายการประจำ</button>
+        <button class="nav-item" data-view="analytics" type="button">สถิติ</button>
+        <button class="nav-item" data-view="settings" type="button">ตั้งค่า</button>
+      </nav>
+
+      <section id="dashboardView" class="view-section" style="gap:1rem;">
+        <div class="dash-spread">
+          <div class="dash-focal" style="padding-top:1.5rem;padding-bottom:1.6rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+              <p class="kicker" style="margin:0;">ยอดคงเหลือสุทธิ เดือนนี้</p>
+              <span id="monthTrend" class="status-pill"></span>
+            </div>
+            <p class="focal-figure" style="font-size:clamp(2.2rem,5vw,3.1rem);" id="monthBalance">฿0</p>
+
+            <div class="progress-track dash-budget-bar" style="margin-top:1.1rem;">
+              <div id="budgetBar" class="progress-bar"></div>
+            </div>
+            <div class="dash-budget-meta" style="margin-top:.6rem;">
+              <span id="budgetPeriodPill" class="status-pill">รายเดือน</span>
+              <span style="color:var(--text-soft)">ใช้ไป <b id="budgetSpent" style="font-family:var(--font-mono);color:var(--ink);">฿0</b></span>
+              <span id="budgetRemaining" style="color:var(--text-soft)">คงเหลือ ฿0</span>
+              <span id="budgetPercent" style="color:var(--text-soft)">0%</span>
+              <span style="color:var(--text-soft)">🔥 <span id="streakText">เริ่มบันทึกวันนี้</span></span>
+              <span id="streakDays" class="hidden">0</span>
+            </div>
+          </div>
+
+          <aside class="dash-rail">
+            <div class="rail-block">
+              <div class="list-toolbar" style="margin-bottom:.9rem;">
+                <h3 style="margin:0;">รายการล่าสุด</h3>
+                <button class="text-btn" type="button" data-view-link="transactions">ดูทั้งหมด</button>
+              </div>
+              <div id="dashRecentList" class="dash-recent-list"></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="dash-stats-grid">
+          <div class="summary-card is-income" style="min-height:6.5rem;">
+            <div class="summary-card-icon"><i data-lucide="trending-up"></i></div>
+            <div>
+              <p class="kicker" style="margin:0 0 .3rem;">รายรับเดือนนี้</p>
+              <strong id="monthIncome">฿0</strong>
+            </div>
+          </div>
+          <div class="summary-card is-expense" style="min-height:6.5rem;">
+            <div class="summary-card-icon"><i data-lucide="trending-down"></i></div>
+            <div>
+              <p class="kicker" style="margin:0 0 .3rem;">รายจ่ายเดือนนี้</p>
+              <strong id="monthExpense">฿0</strong>
+            </div>
+          </div>
+          <div class="summary-card" style="min-height:6.5rem;">
+            <div class="summary-card-icon"><i data-lucide="list-checks"></i></div>
+            <div>
+              <p class="kicker" style="margin:0 0 .3rem;">รายการวันนี้</p>
+              <strong id="todayCount">0</strong>
+            </div>
+          </div>
+          <div class="summary-card is-balance" style="min-height:6.5rem;">
+            <div class="summary-card-icon"><i data-lucide="tag"></i></div>
+            <div>
+              <p class="kicker" style="margin:0 0 .3rem;">ใช้จ่ายมากสุด</p>
+              <strong id="dashTopCategoryAmt">฿0</strong>
+              <p style="margin:.2rem 0 0;font-size:.74rem;color:var(--text-soft);" id="dashTopCategoryName">ยังไม่มีข้อมูล</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="transactionsView" class="view-section hidden">
+        <div class="list-toolbar">
+          <div class="segmented cols-3 w-full sm:max-w-xs" data-history-group-toggle>
+            <button class="active" data-history-group="day" type="button">รายวัน</button>
+            <button data-history-group="week" type="button">รายสัปดาห์</button>
+            <button data-history-group="month" type="button">รายเดือน</button>
+          </div>
+          <div class="search-wrap sm:w-72">
+            <i data-lucide="search"></i>
+            <input id="transactionSearch" type="search" placeholder="ค้นหาหมวดหมู่หรือโน้ต">
+          </div>
+        </div>
+        <div class="ledger-sheet-wrap">
+          <div id="transactionList" class="ledger-list"></div>
+        </div>
+      </section>
+
+      <section id="budgetView" class="view-section hidden" style="gap:1rem;">
+        <div class="timeline-card budget-hero">
+          <div class="budget-hero-head">
+            <div class="budget-hero-title">
+              <span id="budgetHeroBadge" class="status-pill is-primary-pill hidden">⭐ งบหลัก</span>
+              <h3 id="budgetHeroName">ยังไม่ได้ตั้งงบหลัก</h3>
+            </div>
+            <button id="budgetHeroEditBtn" class="icon-chip-sm hidden" type="button" title="แก้ไขงบหลัก">
+              <i data-lucide="pencil"></i>
+            </button>
+          </div>
+          <div class="budget-hero-ring-wrap">
+            <svg viewBox="0 0 120 120">
+              <circle class="budget-hero-ring-track" cx="60" cy="60" r="52"></circle>
+              <circle id="budgetHeroRingFill" class="budget-hero-ring-fill" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="budget-hero-ring-center">
+              <strong id="budgetHeroPercent">0%</strong>
+              <span>ของวงเงิน</span>
+            </div>
+          </div>
+          <div class="budget-hero-stats">
+            <div class="budget-hero-stat">
+              <p>ใช้ไปแล้ว</p>
+              <strong id="budgetHeroSpent">฿0</strong>
+            </div>
+            <div class="budget-hero-stat">
+              <p>เหลืออีก</p>
+              <strong id="budgetHeroRemain">฿0</strong>
+            </div>
+            <div class="budget-hero-stat">
+              <p>เหลือในรอบ</p>
+              <strong id="budgetHeroDaysLeft">—</strong>
+            </div>
+            <div class="budget-hero-stat">
+              <p>ใช้ได้อีกต่อวัน</p>
+              <strong id="budgetHeroDailyAllowance">฿0</strong>
+            </div>
+          </div>
+          <div id="budgetHeroRisk" class="budget-hero-risk hidden"></div>
+        </div>
+
+        <div class="budget-overview-strip">
+          <div class="budget-overview-chip">
+            <div class="ic"><i data-lucide="layers"></i></div>
+            <div><p>งบทั้งหมด</p><strong id="budgetOverviewCount">0</strong></div>
+          </div>
+          <div class="budget-overview-chip">
+            <div class="ic"><i data-lucide="wallet"></i></div>
+            <div><p>วงเงินรวม</p><strong id="budgetOverviewTotal">฿0</strong></div>
+          </div>
+          <div id="budgetOverviewOverChip" class="budget-overview-chip">
+            <div class="ic"><i data-lucide="alert-triangle"></i></div>
+            <div><p>กำลังเกินงบ</p><strong id="budgetOverviewOverCount">0</strong></div>
+          </div>
+        </div>
+
+        <div class="timeline-card">
+          <div class="list-toolbar" style="margin-bottom:1.1rem;">
+            <p class="kicker" style="margin:0;">งบทั้งหมด</p>
+            <div class="savings-toolbar">
+              <button id="budgetOverFilterToggle" class="budget-filter-toggle" type="button">เกินงบเท่านั้น</button>
+              <button id="budgetFormOpenBtn" class="secondary-btn" type="button">
+                <i data-lucide="settings-2"></i><span>ตั้งงบประมาณ</span>
+              </button>
+            </div>
+          </div>
+          <div id="budgetList" class="envelope-row"></div>
+        </div>
+      </section>
+
+      <section id="savingsView" class="view-section hidden" style="gap:1rem;">
+        <div class="timeline-card savings-hero">
+          <div class="savings-hero-ring-wrap">
+            <svg viewBox="0 0 120 120">
+              <circle class="savings-hero-ring-track" cx="60" cy="60" r="52"></circle>
+              <circle id="savingsHeroRingFill" class="savings-hero-ring-fill" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="savings-hero-ring-center">
+              <strong id="savingsHeroRingPercent">0%</strong>
+              <span>ของเป้าหมายรวม</span>
+            </div>
+          </div>
+          <div class="savings-hero-stats">
+            <div class="savings-hero-stat">
+              <p>เงินออมสะสมทั้งหมด</p>
+              <strong id="savingsTotalSaved">฿0</strong>
+            </div>
+            <div class="savings-hero-stat">
+              <p>เงินคงเหลือพร้อมใช้</p>
+              <strong id="savingsAvailableBalance">฿0</strong>
+            </div>
+            <div class="savings-hero-stat">
+              <p>เป้าหมายทั้งหมด</p>
+              <strong id="savingsGoalsCount">0 เป้าหมาย</strong>
+            </div>
+            <div class="savings-hero-stat">
+              <p>สำเร็จแล้ว</p>
+              <strong id="savingsCompletedCount">0 เป้าหมาย</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-card">
+          <div class="list-toolbar" style="margin-bottom:1.1rem;">
+            <p class="kicker" style="margin:0;">เป้าหมายการออม</p>
+            <div class="savings-toolbar">
+              <select id="savingsSortSelect" class="savings-sort-select">
+                <option value="recent">ล่าสุด</option>
+                <option value="progress">ใกล้เป้าหมายที่สุด</option>
+                <option value="name">ชื่อ ก-ฮ</option>
+              </select>
+              <button id="savingsGoalFormOpenBtn" class="secondary-btn" type="button">
+                <i data-lucide="plus"></i><span>เพิ่มเป้าหมาย</span>
+              </button>
+            </div>
+          </div>
+          <div id="savingsGoalList" class="envelope-row"></div>
+        </div>
+
+        <div class="timeline-card">
+          <div class="list-toolbar" style="margin-bottom:1.1rem;">
+            <p class="kicker" style="margin:0;">ประวัติการฝาก-ถอน</p>
+          </div>
+          <div class="log-filter-bar">
+            <input id="savingsLogSearch" type="search" placeholder="ค้นหาโน้ตหรือชื่อเป้าหมาย...">
+            <select id="savingsLogGoalFilter" class="savings-sort-select">
+              <option value="">ทุกเป้าหมาย</option>
+            </select>
+            <button class="log-filter-chip active" data-log-direction-filter="" type="button">ทั้งหมด</button>
+            <button class="log-filter-chip" data-log-direction-filter="deposit" type="button">ฝากเงิน</button>
+            <button class="log-filter-chip" data-log-direction-filter="withdraw" type="button">ถอนเงิน</button>
+          </div>
+          <div id="savingsLogList" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <section id="recurringView" class="view-section hidden">
+        <div id="recurringNextTicket" class="next-ticket hidden">
+          <div class="next-days"><b id="recurringNextDays">0</b><span>วัน</span></div>
+          <div class="next-info">
+            <p class="cat" id="recurringNextCat"></p>
+            <p class="sub" id="recurringNextSub"></p>
+          </div>
+          <div class="next-amt" id="recurringNextAmt"></div>
+          <button id="recurringNextDelete" class="icon-chip-sm danger" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
+        </div>
+
+        <div class="timeline-card">
+          <div class="list-toolbar" style="margin-bottom:1.1rem;">
+            <p class="kicker" style="margin:0;">กำหนดไว้แล้ว</p>
+            <button id="recurringFormOpenBtn" class="secondary-btn" type="button">
+              <i data-lucide="plus"></i><span>เพิ่มรายการอัตโนมัติ</span>
+            </button>
+          </div>
+          <div id="recurringList" class="recurring-timeline"></div>
+        </div>
+      </section>
+
+      <section id="analyticsView" class="view-section hidden">
+        <div class="timeline-card">
+          <div class="analytics-chapter-head">
+            <span class="chapter-no">1</span>
+            <div>
+              <p class="card-kicker">ภาพรวมช่วงเวลา</p>
+              <h3 class="panel-title">เทียบยอดใช้จ่าย วัน / สัปดาห์ / เดือน</h3>
+            </div>
+          </div>
+          <div class="ticker-row">
+            <article id="dailyCompare"></article>
+            <article id="weeklyCompare"></article>
+            <article id="monthlyCompare"></article>
+          </div>
+        </div>
+
+        <div class="mag-spread">
+          <div class="mag-focal">
+            <div class="analytics-chapter-head">
+              <span class="chapter-no">2</span>
+              <div>
+                <p class="card-kicker">หมวดหมู่</p>
+                <h3 class="panel-title">รายจ่ายตามหมวดหมู่</h3>
+              </div>
+            </div>
+            <canvas id="expensePie"></canvas>
+          </div>
+          <aside class="mag-rail">
+            <div class="rail-block">
+              <h3>สัดส่วนแต่ละหมวด</h3>
+              <div id="categoryBreakdownList" class="cat-breakdown-list"></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="trend-mini">
+          <div class="analytics-chapter-head">
+            <span class="chapter-no">3</span>
+            <div>
+              <p class="card-kicker">แนวโน้ม</p>
+              <h3 class="panel-title">รายรับเทียบรายจ่าย</h3>
+            </div>
+          </div>
+          <canvas id="periodBar"></canvas>
+        </div>
+
+        <div class="timeline-card">
+          <div class="analytics-chapter-head">
+            <span class="chapter-no">4</span>
+            <div>
+              <p class="card-kicker">ใช้จ่ายเกินงบ</p>
+              <h3 class="panel-title">สถิติการใช้เงินเกินงบประมาณ</h3>
+            </div>
+          </div>
+          <div id="budgetOverspendList" class="overspend-list"></div>
+        </div>
+      </section>
+
+      <section id="settingsView" class="view-section hidden">
+        <div class="idx-wrap">
+          <nav class="idx-rail">
+            <button class="idx-item active" data-settings-tab="profile" type="button"><b>01</b> โปรไฟล์</button>
+            <button class="idx-item" data-settings-tab="notify" type="button"><b>02</b> การแจ้งเตือน</button>
+            <button class="idx-item" data-settings-tab="danger" type="button"><b>03</b> โซนอันตราย</button>
+          </nav>
+          <div class="idx-content">
+            <div id="settingsPane-profile" class="idx-pane">
+              <h3>โปรไฟล์</h3>
+              <form id="profileForm" class="space-y-4">
+                <div class="flex items-center gap-4">
+                  <img id="settingsAvatar" class="h-20 w-20 rounded-2xl object-cover" alt="Profile">
+                  <label class="secondary-btn cursor-pointer">
+                    <i data-lucide="image-up"></i><span>เปลี่ยนรูป</span>
+                    <input id="profileImageInput" class="hidden" type="file" accept="image/png,image/jpeg,image/webp">
+                  </label>
+                </div>
+                <div>
+                  <label class="form-label" for="settingsDisplayName">ชื่อบัญชี</label>
+                  <input id="settingsDisplayName" class="form-input" type="text" required>
+                </div>
+                <button class="primary-btn w-full" type="submit">
+                  <i data-lucide="save"></i><span>บันทึกโปรไฟล์</span>
+                </button>
+              </form>
+            </div>
+
+            <div id="settingsPane-notify" class="idx-pane hidden">
+              <h3>การแจ้งเตือน</h3>
+              <form id="settingsForm" class="space-y-4">
+                <label class="switch-row">
+                  <span>
+                    <strong>รับอีเมลแจ้งเตือน</strong>
+                    <small>ส่งผ่าน Gmail ตามเวลาที่กำหนด</small>
+                  </span>
+                  <input id="emailNotifications" type="checkbox">
+                </label>
+                <div>
+                  <label class="form-label" for="reminderTime">เวลาแจ้งเตือน</label>
+                  <input id="reminderTime" class="form-input" type="time">
+                </div>
+                <div>
+                  <label class="form-label" for="budgetAlertThreshold">แจ้งเตือนงบใกล้เต็ม</label>
+                  <select id="budgetAlertThreshold" class="form-input">
+                    <option value="0.7">70%</option>
+                    <option value="0.8">80%</option>
+                    <option value="0.9">90%</option>
+                    <option value="1">100%</option>
+                  </select>
+                </div>
+                <button class="primary-btn w-full" type="submit">
+                  <i data-lucide="mail-check"></i><span>บันทึกการแจ้งเตือน</span>
+                </button>
+              </form>
+            </div>
+
+            <div id="settingsPane-danger" class="idx-pane hidden">
+              <h3 style="color:var(--danger)">โซนอันตราย</h3>
+              <p class="mb-4 text-sm" style="color:var(--text-soft)">
+                การลบบัญชีจะลบรายการ งบประมาณ รายการประจำ และข้อมูลโปรไฟล์ทั้งหมดของคุณอย่างถาวร
+                เหมือนกลับไปเป็นบัญชีใหม่ที่ยังไม่เคยสมัคร ไม่สามารถกู้คืนได้
+              </p>
+              <form id="deleteAccountForm" class="space-y-3">
+                <div>
+                  <label class="form-label" for="deleteAccountPassword">ยืนยันด้วยรหัสผ่านปัจจุบัน</label>
+                  <input id="deleteAccountPassword" class="form-input" type="password" required autocomplete="current-password" placeholder="กรอกรหัสผ่านเพื่อยืนยัน">
+                </div>
+                <button class="danger-btn w-full" type="submit">
+                  <i data-lucide="trash-2"></i><span>ลบข้อมูลบัญชีถาวร</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <button id="fabAddBtn" class="fab-add" type="button" aria-label="เพิ่มรายการ">
+      <i data-lucide="plus"></i>
+    </button>
+
+    <div id="entryMethodModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="entryMethodTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Entry Method</p>
+            <h2 id="entryMethodTitle" class="panel-title">เลือกวิธีจดรายการ</h2>
+          </div>
+          <button id="entryMethodClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="entry-method-grid">
+          <button class="entry-method-card" data-entry-method="normal" type="button">
+            <i data-lucide="clipboard-pen"></i>
+            <strong>จดแบบปกติ</strong>
+            <span>กรอกประเภท จำนวน หมวดหมู่ และวันที่</span>
+          </button>
+          <button class="entry-method-card" data-entry-method="nlp" type="button">
+            <i data-lucide="terminal-square"></i>
+            <strong>NLP / Command Line</strong>
+            <span>พิมพ์หรือพูด เช่น ข้าวขาหมู 50</span>
+          </button>
+          <button class="entry-method-card" data-entry-method="ocr" type="button">
+            <i data-lucide="scan-text"></i>
+            <strong>สแกนสลิป / ใบเสร็จ</strong>
+            <span>ลากรูปมาวางหรืออัปโหลดหลายรูป</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="transactionModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="transactionModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Quick Entry</p>
+            <h2 id="transactionModalTitle" class="panel-title">บันทึกรายรับ-รายจ่าย</h2>
+          </div>
+          <button id="transactionModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="transactionModalForm" class="transaction-form"></form>
+      </section>
+    </div>
+
+    <div id="nlpModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="nlpModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Command Entry</p>
+            <h2 id="nlpModalTitle" class="panel-title">จดด้วยประโยคเดียว</h2>
+          </div>
+          <button id="nlpModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="nlpForm" class="transaction-form compact">
+          <div>
+            <label class="form-label" for="nlpInput">รายการ</label>
+            <div class="voice-input-row">
+              <input id="nlpInput" class="form-input" type="text" placeholder="เช่น ข้าวขาหมู 50 หรือ ค่าไฟ 1200" required>
+              <button id="nlpVoiceBtn" class="ghost-icon" type="button" title="พูดเพื่อจด" aria-label="พูดเพื่อจด">
+                <i data-lucide="mic"></i>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" for="nlpType">ประเภท</label>
+            <select id="nlpType" class="form-input">
+              <option value="expense">รายจ่าย</option>
+              <option value="income">รายรับ</option>
+            </select>
+          </div>
+          <p id="nlpPreview" class="parse-preview">ระบบจะแยกชื่อรายการและจำนวนเงินให้อัตโนมัติ</p>
+          <button class="primary-btn w-full" type="submit">
+            <i data-lucide="save"></i><span>บันทึกทันที</span>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <div id="nlpConfirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="nlpConfirmModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">ตรวจสอบก่อนบันทึก</p>
+            <h2 id="nlpConfirmModalTitle" class="panel-title">หมวดหมู่นี้ถูกต้องไหม?</h2>
+          </div>
+          <button id="nlpConfirmModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div id="nlpConfirmList" class="nlp-confirm-list"></div>
+        <button id="nlpConfirmSaveBtn" class="primary-btn w-full" type="button">
+          <i data-lucide="check"></i><span>ยืนยันและบันทึก</span>
+        </button>
+      </section>
+    </div>
+
+    <div id="ocrModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ocrModalTitle">
+      <section class="transaction-modal ocr-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">OCR Reader</p>
+            <h2 id="ocrModalTitle" class="panel-title">สแกนสลิป / ใบเสร็จ</h2>
+          </div>
+          <button id="ocrModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div id="ocrDropZone" class="drop-zone">
+          <i data-lucide="upload-cloud"></i>
+          <strong>ลากรูปสลิปมาวาง</strong>
+          <span>หรือกดเพื่อเลือกหลายรูปพร้อมกัน</span>
+          <input id="ocrFileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        </div>
+        <div id="ocrStatus" class="parse-preview mt-3">รองรับหลายรูป ระบบจะอ่านยอดเงิน วันที่ และเวลาให้ตรวจทานก่อนบันทึก</div>
+        <div id="ocrReviewList" class="ocr-review-list"></div>
+        <button id="ocrSaveAllBtn" class="primary-btn mt-4 w-full" type="button" disabled>
+          <i data-lucide="save"></i><span>บันทึกทั้งหมด</span>
+        </button>
+      </section>
+    </div>
+
+    <div id="budgetFormModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="budgetFormModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Budget</p>
+            <h2 id="budgetFormModalTitle" class="panel-title">ตั้งงบประมาณ</h2>
+          </div>
+          <button id="budgetFormModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="budgetForm" class="space-y-4">
+          <div class="segmented" data-budget-scope-toggle>
+            <button class="active" data-budget-scope="overall" type="button">งบรวมทุกหมวด</button>
+            <button data-budget-scope="category" type="button">งบตามหมวดหมู่</button>
+          </div>
+          <input id="budgetScope" type="hidden" value="overall">
+          <div>
+            <label class="form-label" for="budgetPeriod">รูปแบบงบ</label>
+            <select id="budgetPeriod" class="form-input">
+              <option value="daily">รายวัน</option>
+              <option value="weekly">รายสัปดาห์</option>
+              <option value="monthly" selected>รายเดือน</option>
+            </select>
+          </div>
+          <div id="budgetCategoryField" class="hidden">
+            <label class="form-label" for="budgetCategory">หมวดหมู่</label>
+            <select id="budgetCategory" class="form-input"></select>
+          </div>
+          <div>
+            <label class="form-label" for="budgetAmount">วงเงิน (บาท)</label>
+            <input id="budgetAmount" class="form-input" type="number" min="1" step="0.01" required>
+          </div>
+          <div>
+            <label class="form-label" for="budgetStart">วันที่เริ่มใช้</label>
+            <input id="budgetStart" class="form-input" type="date">
+          </div>
+          <input id="budgetEditingId" type="hidden" value="">
+          <div class="flex gap-2">
+            <button class="primary-btn w-full flex-1" type="submit">
+              <i data-lucide="save"></i><span id="budgetSubmitLabel">บันทึกงบ</span>
+            </button>
+            <button id="budgetCancelEdit" class="secondary-btn hidden" type="button">ยกเลิก</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="recurringFormModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recurringFormModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Recurring</p>
+            <h2 id="recurringFormModalTitle" class="panel-title">เพิ่มรายการอัตโนมัติ</h2>
+          </div>
+          <button id="recurringFormModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="recurringForm" class="transaction-form"></form>
+      </section>
+    </div>
+
+    <div id="savingsGoalFormModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="savingsGoalFormModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Savings Goal</p>
+            <h2 id="savingsGoalFormModalTitle" class="panel-title">เพิ่มเป้าหมายการออม</h2>
+          </div>
+          <button id="savingsGoalFormModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="savingsGoalForm" class="space-y-4">
+          <div>
+            <label class="form-label" for="savingsGoalName">ชื่อเป้าหมาย</label>
+            <input id="savingsGoalName" class="form-input" type="text" required placeholder="เช่น กองทุนฉุกเฉิน, ทริปญี่ปุ่น">
+          </div>
+          <div>
+            <label class="form-label" for="savingsGoalTarget">เป้าหมาย (บาท)</label>
+            <input id="savingsGoalTarget" class="form-input" type="number" min="0" step="0.01" placeholder="เว้นว่างได้ถ้ายังไม่กำหนดเป้าหมาย">
+          </div>
+          <div>
+            <p class="form-label">ไอคอน</p>
+            <div id="savingsGoalIconPicker" class="icon-picker"></div>
+            <input id="savingsGoalIcon" type="hidden" value="piggy-bank">
+          </div>
+          <div>
+            <label class="form-label" for="savingsGoalNote">โน้ต</label>
+            <textarea id="savingsGoalNote" class="form-input" rows="2" placeholder="ระบุเพิ่มเติมได้"></textarea>
+          </div>
+          <input id="savingsGoalEditingId" type="hidden" value="">
+          <div class="flex gap-2">
+            <button class="primary-btn w-full flex-1" type="submit">
+              <i data-lucide="save"></i><span id="savingsGoalSubmitLabel">บันทึกเป้าหมาย</span>
+            </button>
+            <button id="savingsGoalCancelEdit" class="secondary-btn hidden" type="button">ยกเลิก</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="savingsLogModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="savingsLogModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Savings</p>
+            <h2 id="savingsLogModalTitle" class="panel-title">ฝากเงินออม</h2>
+          </div>
+          <button id="savingsLogModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="savingsLogForm" class="space-y-4">
+          <div class="segmented" data-savings-direction-toggle>
+            <button class="active" data-savings-direction="deposit" type="button">ฝากเงิน</button>
+            <button data-savings-direction="withdraw" type="button">ถอนเงิน</button>
+          </div>
+          <input id="savingsLogDirection" type="hidden" value="deposit">
+          <input id="savingsLogGoalId" type="hidden" value="">
+          <div>
+            <p class="form-label">เป้าหมาย</p>
+            <p id="savingsLogGoalName" class="parse-preview" style="margin:0;"></p>
+          </div>
+          <div>
+            <label class="form-label" for="savingsLogAmount">จำนวนเงิน (บาท)</label>
+            <input id="savingsLogAmount" class="form-input" type="number" min="1" step="0.01" required placeholder="0.00">
+            <div id="savingsLogQuickAmounts" class="quick-amount-row" style="margin-top:.6rem;"></div>
+          </div>
+          <div>
+            <label class="form-label" for="savingsLogNote">โน้ต</label>
+            <textarea id="savingsLogNote" class="form-input" rows="2" placeholder="ระบุเพิ่มเติมได้"></textarea>
+          </div>
+          <div>
+            <label class="form-label" for="savingsLogDate">วันที่</label>
+            <input id="savingsLogDate" class="form-input" type="date" required>
+          </div>
+          <button id="savingsLogSubmit" class="primary-btn w-full" type="submit">
+            <i data-lucide="save"></i><span>บันทึก</span>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <nav class="mobile-nav">
+      <button class="mobile-nav-item active" data-view="dashboard" type="button"><span class="ic"><i data-lucide="layout-dashboard"></i></span><span class="lbl">หน้าแรก</span></button>
+      <button class="mobile-nav-item" data-view="transactions" type="button"><span class="ic"><i data-lucide="list-checks"></i></span><span class="lbl">ประวัติ</span></button>
+      <button class="mobile-nav-item" data-view="budget" type="button"><span class="ic"><i data-lucide="gauge"></i></span><span class="lbl">งบ</span></button>
+      <span class="mobile-nav-slot" aria-hidden="true"></span>
+      <button class="mobile-nav-item" data-view="savings" type="button"><span class="ic"><i data-lucide="piggy-bank"></i></span><span class="lbl">ออมเงิน</span></button>
+      <button class="mobile-nav-item" data-view="recurring" type="button"><span class="ic"><i data-lucide="repeat"></i></span><span class="lbl">ประจำ</span></button>
+      <button class="mobile-nav-item" data-view="analytics" type="button"><span class="ic"><i data-lucide="bar-chart-3"></i></span><span class="lbl">สถิติ</span></button>
+    </nav>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loader"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <?!= include('JS'); ?>
+  <script>
+    // ทำให้แต่ละกลุ่มวันในหน้า "ประวัติรายการ" ย่อ/ขยายได้ (คลิกที่หัวแถบวันที่)
+    document.addEventListener('click', function (e) {
+      var head = e.target.closest('.ledger-group-head');
+      if (!head) return;
+      var group = head.closest('.ledger-group');
+      if (!group) return;
+      group.classList.toggle('is-collapsed');
+    });
+
+    // เปิด/ปิดหน้าต่าง "ตั้งงบประมาณ" และ "เพิ่มรายการอัตโนมัติ" แบบป็อปอัป
+    (function () {
+      function openModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+      }
+      function closeModal(modal) {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+      }
+
+      document.addEventListener('click', function (e) {
+        var budgetModal = document.getElementById('budgetFormModal');
+        var recurringModal = document.getElementById('recurringFormModal');
+
+        if (e.target.closest('#budgetFormOpenBtn') || e.target.closest('#budgetHeroEditBtn') || e.target.closest('#budgetList .icon-chip-sm:not(.danger)')) {
+          openModal(budgetModal);
+        }
+        if (e.target.closest('#budgetFormModalClose') || e.target === budgetModal) {
+          closeModal(budgetModal);
+        }
+
+        if (e.target.closest('#recurringFormOpenBtn') || e.target.closest('#recurringList .icon-chip-sm:not(.danger)')) {
+          openModal(recurringModal);
+        }
+        if (e.target.closest('#recurringFormModalClose') || e.target === recurringModal) {
+          closeModal(recurringModal);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
