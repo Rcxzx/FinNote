@@ -46,6 +46,11 @@
 </head>
 <body class="antialiased">
   <div id="toast" class="toast hidden"></div>
+  <div id="undoToast" class="undo-toast hidden">
+    <span id="undoToastMessage"></span>
+    <button id="undoToastBtn" type="button">เลิกทำ</button>
+    <div class="undo-progress"></div>
+  </div>
 
   <main id="authScreen" class="auth-bg min-h-screen px-4 py-8 sm:px-6">
     <div class="auth-book">
@@ -102,17 +107,32 @@
               <label class="form-label" for="email">อีเมล Gmail</label>
               <input id="email" class="form-input" type="email" autocomplete="email" required placeholder="you@gmail.com">
             </div>
-            <div>
+            <div id="passwordWrap">
               <label class="form-label" for="password">รหัสผ่าน</label>
               <input id="password" class="form-input" type="password" autocomplete="current-password" required minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร">
+              <div class="auth-link-row">
+                <button id="forgotPasswordLink" class="auth-link-btn" type="button">ลืมรหัสผ่าน?</button>
+              </div>
             </div>
             <div id="pinWrap" class="hidden">
               <label class="form-label" for="emailPin">PIN ยืนยันอีเมล</label>
               <input id="emailPin" class="form-input" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="กรอก PIN 6 หลัก">
             </div>
+            <div id="forgotPinWrap" class="hidden">
+              <label class="form-label" for="forgotPin">PIN ที่ได้รับทางอีเมล</label>
+              <input id="forgotPin" class="form-input" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="กรอก PIN 6 หลัก">
+            </div>
+            <div id="forgotNewPasswordWrap" class="hidden">
+              <label class="form-label" for="forgotNewPassword">รหัสผ่านใหม่</label>
+              <input id="forgotNewPassword" class="form-input" type="password" minlength="8" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร">
+            </div>
             <button id="authSubmit" class="primary-btn w-full" type="submit">
               <i data-lucide="log-in"></i>
               <span>เข้าสู่ระบบ</span>
+            </button>
+            <button id="backToLoginBtn" class="secondary-btn w-full hidden" type="button">
+              <i data-lucide="arrow-left"></i>
+              <span>กลับไปเข้าสู่ระบบ</span>
             </button>
           </form>
         </div>
@@ -466,7 +486,9 @@
           <nav class="idx-rail">
             <button class="idx-item active" data-settings-tab="profile" type="button"><b>01</b> โปรไฟล์</button>
             <button class="idx-item" data-settings-tab="notify" type="button"><b>02</b> การแจ้งเตือน</button>
-            <button class="idx-item" data-settings-tab="danger" type="button"><b>03</b> โซนอันตราย</button>
+            <button class="idx-item" data-settings-tab="categories" type="button"><b>03</b> หมวดหมู่</button>
+            <button class="idx-item" data-settings-tab="export" type="button"><b>04</b> ส่งออกข้อมูล</button>
+            <button class="idx-item" data-settings-tab="danger" type="button"><b>05</b> โซนอันตราย</button>
           </nav>
           <div class="idx-content">
             <div id="settingsPane-profile" class="idx-pane">
@@ -516,6 +538,36 @@
                   <i data-lucide="mail-check"></i><span>บันทึกการแจ้งเตือน</span>
                 </button>
               </form>
+            </div>
+
+            <div id="settingsPane-categories" class="idx-pane hidden">
+              <h3>จัดการหมวดหมู่</h3>
+              <p class="mb-4 text-sm" style="color:var(--text-soft)">
+                เพิ่ม แก้ไข ลบ หรือจัดลำดับหมวดหมู่ที่ใช้ในรายการรับ-จ่ายของคุณ
+              </p>
+              <div class="segmented" style="margin-bottom:1rem;">
+                <button class="active" data-category-type="expense" type="button">รายจ่าย</button>
+                <button data-category-type="income" type="button">รายรับ</button>
+              </div>
+              <div id="categoryManagerList" class="settings-list"></div>
+              <button id="categoryAddBtn" class="secondary-btn w-full" type="button" style="margin-top:1rem;">
+                <i data-lucide="plus"></i><span>เพิ่มหมวดหมู่ใหม่</span>
+              </button>
+            </div>
+
+            <div id="settingsPane-export" class="idx-pane hidden">
+              <h3>ส่งออกข้อมูล</h3>
+              <p class="mb-4 text-sm" style="color:var(--text-soft)">
+                ดาวน์โหลดข้อมูลของคุณเป็นไฟล์ CSV เปิดดูด้วย Excel หรือ Google Sheets ได้ทันที
+              </p>
+              <div class="space-y-3">
+                <button id="exportTransactionsBtn" class="secondary-btn w-full" type="button">
+                  <i data-lucide="file-down"></i><span>ส่งออกรายการรับ-จ่าย (CSV)</span>
+                </button>
+                <button id="exportSavingsBtn" class="secondary-btn w-full" type="button">
+                  <i data-lucide="file-down"></i><span>ส่งออกประวัติเงินออม (CSV)</span>
+                </button>
+              </div>
             </div>
 
             <div id="settingsPane-danger" class="idx-pane hidden">
@@ -716,6 +768,43 @@
       </section>
     </div>
 
+    <div id="categoryFormModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="categoryFormModalTitle">
+      <section class="transaction-modal">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="card-kicker">Category</p>
+            <h2 id="categoryFormModalTitle" class="panel-title">เพิ่มหมวดหมู่</h2>
+          </div>
+          <button id="categoryFormModalClose" class="ghost-icon" type="button" title="ปิด" aria-label="ปิดหน้าต่าง">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="categoryForm" class="space-y-4">
+          <div>
+            <label class="form-label" for="categoryName">ชื่อหมวดหมู่</label>
+            <input id="categoryName" class="form-input" type="text" required maxlength="80" placeholder="เช่น ค่าเดินทาง">
+          </div>
+          <div>
+            <p class="form-label">ไอคอน</p>
+            <div id="categoryIconPicker" class="icon-picker"></div>
+            <input id="categoryIcon" type="hidden" value="tag">
+          </div>
+          <div>
+            <p class="form-label">สี</p>
+            <div id="categoryColorPicker" class="color-picker"></div>
+            <input id="categoryColor" type="hidden" value="#7a7a72">
+          </div>
+          <input id="categoryEditingId" type="hidden" value="">
+          <input id="categoryEditingType" type="hidden" value="expense">
+          <div class="flex gap-2">
+            <button class="primary-btn w-full flex-1" type="submit">
+              <i data-lucide="save"></i><span id="categorySubmitLabel">บันทึกหมวดหมู่</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <div id="recurringFormModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recurringFormModalTitle">
       <section class="transaction-modal">
         <div class="mb-4 flex items-center justify-between gap-3">
@@ -856,6 +945,7 @@
       document.addEventListener('click', function (e) {
         var budgetModal = document.getElementById('budgetFormModal');
         var recurringModal = document.getElementById('recurringFormModal');
+        var categoryModal = document.getElementById('categoryFormModal');
 
         if (e.target.closest('#budgetFormOpenBtn') || e.target.closest('#budgetHeroEditBtn') || e.target.closest('#budgetList .icon-chip-sm:not(.danger)')) {
           openModal(budgetModal);
@@ -869,6 +959,13 @@
         }
         if (e.target.closest('#recurringFormModalClose') || e.target === recurringModal) {
           closeModal(recurringModal);
+        }
+
+        if (e.target.closest('#categoryAddBtn') || e.target.closest('#categoryManagerList .icon-chip-sm:not(.danger)')) {
+          openModal(categoryModal);
+        }
+        if (e.target.closest('#categoryFormModalClose') || e.target === categoryModal) {
+          closeModal(categoryModal);
         }
       });
     })();

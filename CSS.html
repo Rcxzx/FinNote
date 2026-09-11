@@ -23,6 +23,9 @@
     --neutral-grey: #ddceac;
     --margin-rule: #c4635a;
 
+    --accent-fill: var(--brand-fill);
+    --accent-fill-ink: #fff;
+
     --r-sm: 6px;
     --r-md: 8px;
     --r-lg: 10px;
@@ -56,14 +59,15 @@
 
   .dark {
     color-scheme: dark;
-    --surface: #0e0e0d;
-    --surface-soft: #060605;
-    --surface-raised: #161513;
-    --line: #2f2b23;
-    --line-soft: #201d18;
-    --text-soft: #a39a86;
-    --text-faint: #665f4f;
-    --ink: #efe9d8;
+    /* ---- Warm "espresso paper" dark palette — keeps the brand's warm tone instead of neutral black ---- */
+    --surface: #1e1811;
+    --surface-soft: #16120c;
+    --surface-raised: #2a2216;
+    --line: #4a3f2c;
+    --line-soft: #362d1f;
+    --text-soft: #b8ac8e;
+    --text-faint: #7d715a;
+    --ink: #f5eedd;
 
     --brand: #8fbf9f;
     --brand-strong: #9fd0af;
@@ -74,8 +78,13 @@
     --income: #8fbf9f;
     --expense: #e0916f;
     --warning: #dbb06c;
-    --neutral-grey: #2f2b23;
+    --neutral-grey: #4a3f2c;
     --margin-rule: #b06c5c;
+
+    /* ปุ่ม/ป้ายแบบ "เติมสี" (active state) ในธีมมืดใช้สีอ่อน+ตัวอักษรเข้ม แทนสีเขียวเข้ม+ขาว
+       เพื่อให้ตัดกับพื้นหลังมืดชัดเจน สอดคล้องกับปุ่มหลัก (.primary-btn) ที่ทำแบบนี้อยู่แล้ว */
+    --accent-fill: var(--brand-strong);
+    --accent-fill-ink: #10160f;
 
     --shadow: 0 1px 0 rgba(0, 0, 0, .5), 0 10px 24px -14px rgba(0, 0, 0, .8);
     --shadow-lg: 0 26px 54px -18px rgba(0, 0, 0, .85);
@@ -85,15 +94,15 @@
     --shadow-segmented: 0 1px 3px rgba(0, 0, 0, .5);
     --shadow-fab: 0 10px 24px -6px rgba(0, 0, 0, .7);
 
-    --bg-auth: radial-gradient(120% 140% at 15% -10%, #141311 0%, #0a0a09 60%, #000000 100%);
-    --bg-metric: rgba(20, 19, 17, .65);
+    --bg-auth: radial-gradient(120% 140% at 15% -10%, #1c1811 0%, #100d09 60%, #060503 100%);
+    --bg-metric: rgba(22, 18, 12, .65);
     --bg-modal-backdrop: rgba(0, 0, 0, .78);
     --bg-loading-overlay: rgba(0, 0, 0, .6);
 
     --paper-grain:
-      radial-gradient(circle at 22% 24%, rgba(255, 255, 255, .035) 0, transparent 42%),
-      radial-gradient(circle at 78% 68%, rgba(255, 255, 255, .03) 0, transparent 40%),
-      repeating-linear-gradient(178deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 3px);
+      radial-gradient(circle at 22% 24%, rgba(255, 255, 255, .03) 0, transparent 42%),
+      radial-gradient(circle at 78% 68%, rgba(255, 255, 255, .025) 0, transparent 40%),
+      repeating-linear-gradient(178deg, rgba(255, 255, 255, .015) 0 1px, transparent 1px 3px);
   }
 
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
@@ -346,6 +355,10 @@
 
   .auth-card h2 { font-weight: 700; }
 
+  .auth-link-row { display: flex; justify-content: flex-end; margin-top: .4rem; }
+  .auth-link-btn { background: none; border: none; padding: 0; font-size: .78rem; font-weight: 700; color: var(--brand-strong); text-decoration: underline; cursor: pointer; }
+  .auth-link-btn:hover { color: var(--brand); }
+
   /* ============ FORMS — ruled-line inputs ============ */
   .form-label {
     display: block;
@@ -460,6 +473,21 @@
   }
 
   .toast.error { border-left-color: var(--danger); color: var(--danger); }
+
+  /* ---- Undo toast (replaces confirm() popups for deletes) ---- */
+  .undo-toast {
+    position: fixed; left: 50%; bottom: calc(6.2rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: .9rem;
+    background: var(--ink); color: #f6f0dd; padding: .75rem 1.1rem; border-radius: var(--r-pill);
+    box-shadow: var(--shadow-lg); font-size: .85rem; font-weight: 700;
+    max-width: min(92vw, 26rem); overflow: hidden;
+  }
+  @media (min-width: 1024px) { .undo-toast { bottom: 2rem; } }
+  .undo-toast button { background: none; border: none; color: var(--warning); font-weight: 800; text-decoration: underline; cursor: pointer; flex: 0 0 auto; white-space: nowrap; }
+  .undo-toast .undo-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--warning); border-radius: 0 0 999px 999px; }
+  @keyframes undo-countdown { from { width: 100%; } to { width: 0%; } }
+
+  .is-pending-delete { opacity: .35; filter: grayscale(1); pointer-events: none; transition: opacity .2s ease, filter .2s ease; }
 
   /* ============ APP SHELL — book spine sidebar ============ */
   .app-content {
@@ -950,7 +978,7 @@
     background:
       linear-gradient(135deg, transparent 49%, var(--line) 50%) 0 0/50% 100% no-repeat,
       linear-gradient(-135deg, transparent 49%, var(--line) 50%) 100% 0/50% 100% no-repeat,
-      var(--surface-soft);
+      color-mix(in srgb, var(--accent, var(--line)) 22%, var(--surface-soft));
     border-bottom: 1px solid var(--line);
   }
 
@@ -986,7 +1014,10 @@
   .order-stepper button[disabled] { opacity: .3; pointer-events: none; }
 
   /* ---- Budget hero (primary spotlight) ---- */
-  .budget-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 1.6rem; padding: 1.6rem 1.7rem; }
+  .budget-hero {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1.6rem; padding: 1.6rem 1.7rem;
+    background-image: radial-gradient(120% 160% at 100% 0%, color-mix(in srgb, var(--warning) 10%, transparent), transparent 60%);
+  }
   .budget-hero-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
   .budget-hero-title { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; min-width: 0; }
   .budget-hero-title h3 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
@@ -1048,15 +1079,19 @@
   .goal-ring-badge { position: relative; width: 3rem; height: 3rem; flex: 0 0 auto; }
   .goal-ring-badge svg { transform: rotate(-90deg); width: 100%; height: 100%; }
   .goal-ring-badge .ring-track { fill: none; stroke: var(--line-soft); stroke-width: 4; }
-  .goal-ring-badge .ring-fill { fill: none; stroke: var(--brand); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+  .goal-ring-badge .ring-fill { fill: none; stroke: var(--accent, var(--brand)); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
   .goal-ring-badge.warning .ring-fill { stroke: var(--warning); }
   .goal-ring-badge.danger .ring-fill { stroke: var(--danger); }
   .goal-ring-badge.completed .ring-fill { stroke: var(--income); }
-  .goal-ring-badge .ring-icon { position: absolute; inset: 0; display: grid; place-items: center; color: var(--brand-strong); }
-  .goal-ring-badge .ring-icon svg { width: 1.1rem; height: 1.1rem; }
+  .goal-ring-badge .ring-icon-bg { position: absolute; inset: 5px; border-radius: 50%; background: color-mix(in srgb, var(--accent, var(--brand)) 20%, transparent); }
+  .goal-ring-badge .ring-icon { position: absolute; inset: 0; display: grid; place-items: center; color: var(--accent, var(--brand-strong)); }
+  .goal-ring-badge .ring-icon svg { width: 1.1rem; height: 1.1rem; transform: none; }
 
   /* ---- Savings hero (overview) ---- */
-  .savings-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 1.6rem; padding: 1.6rem 1.7rem; }
+  .savings-hero {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1.6rem; padding: 1.6rem 1.7rem;
+    background-image: radial-gradient(120% 160% at 100% 0%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 60%);
+  }
   .savings-hero-ring-wrap { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 8rem; height: 8rem; }
   .savings-hero-ring-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
   .savings-hero-ring-track { fill: none; stroke: var(--line-soft); stroke-width: 9; }
@@ -1075,10 +1110,27 @@
 
   /* ---- Icon picker (goal form) ---- */
   .icon-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem; }
-  .icon-picker button { display: grid; place-items: center; aspect-ratio: 1; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); color: var(--text-soft); transition: transform .15s ease, border-color .2s ease, color .2s ease, background .2s ease; }
+  .icon-picker button { display: grid; place-items: center; aspect-ratio: 1; border-radius: var(--r-md); border: 1.5px solid var(--line); background: var(--surface); color: var(--text-soft); transition: border-color .2s ease, color .2s ease, background .2s ease; }
   .icon-picker button svg { width: 1.1rem; height: 1.1rem; }
-  .icon-picker button:hover { transform: translateY(-1px); border-color: var(--brand); color: var(--brand-strong); }
-  .icon-picker button.active { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+  .icon-picker button:hover { border-color: var(--brand); color: var(--brand-strong); }
+  .icon-picker button.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-fill-ink); }
+
+  /* ---- Color picker (category form) ---- */
+  .color-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem; }
+  .color-picker button { position: relative; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .color-picker button.active { border-color: var(--ink); }
+  .color-picker button.active::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .dark .color-picker button.active,
+  .dark .color-picker button.active::after { border-color: #f6f0dd; }
+
+  /* ---- Category manager list (Settings) — single bordered list, like a settings group ---- */
+  .settings-list { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+  .category-row { display: flex; align-items: center; gap: .7rem; padding: .8rem .9rem; border-bottom: 1px solid var(--line); }
+  .category-row:last-child { border-bottom: none; }
+  .category-row .swatch { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: 0 0 auto; color: #fff; }
+  .category-row .swatch svg { width: 1.05rem; height: 1.05rem; }
+  .category-row .name { flex: 1 1 auto; font-weight: 700; min-width: 0; }
+  .category-row .actions { display: flex; align-items: center; gap: .3rem; flex: 0 0 auto; }
 
   /* ---- Quick amount chips (deposit/withdraw modal) ---- */
   .quick-amount-row { display: flex; flex-wrap: wrap; gap: .45rem; }
@@ -1090,7 +1142,7 @@
   .log-filter-bar { display: flex; flex-wrap: wrap; gap: .55rem; margin-bottom: 1rem; }
   .log-filter-bar input[type="search"] { flex: 1 1 160px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); padding: .55rem .8rem; font-size: .85rem; color: var(--ink); }
   .log-filter-chip { border: 1px solid var(--line); border-radius: var(--r-pill); padding: .4rem .85rem; font-size: .78rem; font-weight: 700; color: var(--text-soft); background: var(--surface); }
-  .log-filter-chip.active { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+  .log-filter-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-fill-ink); }
 
   /* ---- Goal completion celebration ---- */
   .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
@@ -1234,6 +1286,7 @@
   /* ============ FORMS / SEGMENTED ============ */
   .transaction-form { display: grid; gap: 1rem; }
   .transaction-form.compact { gap: .8rem; }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 
   .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; border-radius: var(--r-sm); background: var(--surface-soft); padding: .3rem; border: 1px solid var(--line); }
   .segmented button { border-radius: calc(var(--r-sm) - 2px); padding: .65rem; font-weight: 700; color: var(--text-soft); font-size: .88rem; }
@@ -1351,7 +1404,7 @@
   .fab-add {
     position: fixed;
     left: 50%;
-    bottom: calc(4.35rem + env(safe-area-inset-bottom));
+    bottom: calc(1.2rem + env(safe-area-inset-bottom));
     z-index: 45;
     display: grid;
     width: 3.7rem; height: 3.7rem;
@@ -1379,6 +1432,7 @@
     width: min(100%, 30rem);
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
+    scrollbar-gutter: stable;
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     background: var(--surface-raised);
@@ -1502,4 +1556,5 @@
   }
 
   .danger-btn:hover { background: var(--danger); color: #fff; border-style: solid; transform: translateY(-1px); }
+  .dark .danger-btn:hover { color: #2a1208; }
 </style>

@@ -3,6 +3,7 @@
     token: sessionStorage.getItem('moneyflow_session') || '',
     rememberToken: localStorage.getItem('moneyflow_remember') || '',
     authMode: 'login',
+    forgotStep: 'email',
     pendingEmailVerification: false,
     data: null,
     view: 'dashboard',
@@ -31,7 +32,19 @@
     savingsLogFilter: { search: '', goalId: '', direction: '' },
     savingsLogModalGoal: null,
     budgetShowOverOnly: false,
+    categoryManagerType: 'expense',
   };
+
+  const CATEGORY_ICONS = [
+    'utensils', 'car', 'shopping-bag', 'home', 'heart-pulse', 'graduation-cap',
+    'clapperboard', 'briefcase', 'laptop', 'trending-up', 'gift', 'heart',
+    'plane', 'smartphone', 'shirt', 'dumbbell', 'pill', 'paw-print',
+    'wrench', 'shapes', 'tag',
+  ];
+  const CATEGORY_COLORS = [
+    '#c4635a', '#a97a24', '#8a6fb0', '#3f6b8a', '#c25a7c', '#2c7a6b',
+    '#b0793f', '#7a7a72', '#3f6b52', '#a03f2c',
+  ];
 
   const BUDGET_CATEGORY_ICONS = {
     'อาหาร': 'utensils',
@@ -45,7 +58,26 @@
   };
   function budgetIconFor(category) {
     if (!category) return 'layout-grid';
+    const match = (App.data && App.data.categories && App.data.categories.expense || []).find((item) => item.name === category);
+    if (match) return match.icon;
     return BUDGET_CATEGORY_ICONS[category] || 'tag';
+  }
+
+  // สีของหมวดหมู่ (ตั้งไว้ในหน้าจัดการหมวดหมู่) — ใช้แต้มสีให้วงแหวน/ไอคอนของงบประมาณแต่ละใบ
+  // ให้ตรงกับสีของหมวดนั้นๆ แทนที่จะเป็นสีเขียวเดียวกันหมดทุกใบ
+  function categoryColorFor(category) {
+    if (!category) return '';
+    const match = (App.data && App.data.categories && App.data.categories.expense || []).find((item) => item.name === category);
+    return match ? match.color : '';
+  }
+
+  // เป้าหมายออมไม่มีฟิลด์สีของตัวเอง เลยสุ่มสีที่ "คงที่" ให้แต่ละเป้าหมายจากรหัสของมันเอง
+  // (id เดิม = สีเดิมเสมอ ไม่กระพริบเปลี่ยนสีตอน re-render)
+  function colorForSeed(seed) {
+    const str = String(seed || '');
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
   }
 
   const SAVINGS_ICONS = [
@@ -101,8 +133,13 @@
   }
 
   function bindGlobalEvents() {
+    document.getElementById('undoToastBtn').addEventListener('click', () => {
+      if (activeUndo_) activeUndo_.cancel();
+    });
     document.getElementById('authModeToggle').addEventListener('click', toggleAuthMode);
     document.getElementById('authForm').addEventListener('submit', submitAuth);
+    document.getElementById('forgotPasswordLink').addEventListener('click', () => setAuthMode('forgot'));
+    document.getElementById('backToLoginBtn').addEventListener('click', () => setAuthMode('login'));
     document.getElementById('logoutBtn').addEventListener('click', logout);
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('fabAddBtn').addEventListener('click', openEntryMethodModal);
@@ -157,6 +194,17 @@
     populateBudgetCategoryOptions();
     document.getElementById('recurringForm').addEventListener('submit', submitRecurring);
     document.getElementById('recurringNextDelete').addEventListener('click', deleteNextRecurring);
+    document.querySelectorAll('[data-category-type]').forEach((button) => {
+      button.addEventListener('click', () => {
+        App.categoryManagerType = button.dataset.categoryType;
+        document.querySelectorAll('[data-category-type]').forEach((item) => item.classList.toggle('active', item === button));
+        renderCategoryManager();
+      });
+    });
+    document.getElementById('categoryAddBtn').addEventListener('click', () => openCategoryFormModal());
+    document.getElementById('categoryForm').addEventListener('submit', submitCategory);
+    document.getElementById('exportTransactionsBtn').addEventListener('click', exportTransactionsCsv);
+    document.getElementById('exportSavingsBtn').addEventListener('click', exportSavingsCsv);
     document.getElementById('savingsGoalFormOpenBtn').addEventListener('click', () => openSavingsGoalFormModal());
     document.getElementById('savingsGoalFormModalClose').addEventListener('click', closeSavingsGoalFormModal);
     document.getElementById('savingsGoalFormModal').addEventListener('click', (event) => {
@@ -237,7 +285,7 @@
     return Boolean(error) && String(error.message || '').indexOf('เซสชันหมดอายุ') !== -1;
   }
 
-  const AUTH_ENTRY_CALLS = ['resumeSession', 'loginUser', 'registerUser', 'verifyEmailPin', 'requestPasswordReset'];
+  const AUTH_ENTRY_CALLS = ['resumeSession', 'loginUser', 'registerUser', 'verifyEmailPin', 'requestPasswordReset', 'resetPasswordWithPin'];
 
   let sessionResumePromise_ = null;
 
@@ -351,24 +399,56 @@
     document.getElementById('appShell').classList.remove('hidden');
   }
 
-  function toggleAuthMode() {
-    App.authMode = App.authMode === 'login' ? 'register' : 'login';
+  function setAuthMode(mode) {
+    App.authMode = mode;
+    App.forgotStep = 'email';
     App.pendingEmailVerification = false;
-    const isRegister = App.authMode === 'register';
+    refreshAuthFormUI();
+    const firstField = mode === 'forgot' ? '#email' : (mode === 'register' ? '#displayName' : '#email');
+    const el = document.querySelector(firstField);
+    if (el) el.focus();
+  }
+
+  function refreshAuthFormUI() {
+    const mode = App.authMode;
+    const isRegister = mode === 'register';
+    const isForgot = mode === 'forgot';
+    const isForgotReset = isForgot && App.forgotStep === 'reset';
+
     document.getElementById('displayNameWrap').classList.toggle('hidden', !isRegister);
-    document.getElementById('pinWrap').classList.add('hidden');
+    document.getElementById('passwordWrap').classList.toggle('hidden', isForgot);
+    document.getElementById('pinWrap').classList.toggle('hidden', !(isRegister && App.pendingEmailVerification));
     document.getElementById('emailPin').value = '';
-    document.getElementById('authSubmit').innerHTML = isRegister
-      ? '<i data-lucide="user-plus"></i><span>สมัครสมาชิก</span>'
-      : '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>';
+    document.getElementById('forgotPinWrap').classList.toggle('hidden', !isForgotReset);
+    document.getElementById('forgotNewPasswordWrap').classList.toggle('hidden', !isForgotReset);
+    document.getElementById('authModeToggle').classList.toggle('hidden', isForgot);
+    document.getElementById('backToLoginBtn').classList.toggle('hidden', !isForgot);
+
+    let submitLabel = '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>';
+    if (isRegister) submitLabel = '<i data-lucide="user-plus"></i><span>สมัครสมาชิก</span>';
+    if (isForgot) {
+      submitLabel = isForgotReset
+        ? '<i data-lucide="key-round"></i><span>ตั้งรหัสผ่านใหม่</span>'
+        : '<i data-lucide="mail"></i><span>ส่ง PIN ไปทางอีเมล</span>';
+    }
+    document.getElementById('authSubmit').innerHTML = submitLabel;
+
     document.getElementById('authModeToggle').innerHTML = isRegister
       ? '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>'
       : '<i data-lucide="user-plus"></i><span>สมัคร</span>';
     renderIcons();
   }
 
+  function toggleAuthMode() {
+    setAuthMode(App.authMode === 'login' ? 'register' : 'login');
+  }
+
   async function submitAuth(event) {
     event.preventDefault();
+    if (App.authMode === 'forgot') {
+      await submitForgotPassword();
+      return;
+    }
     if (App.authMode === 'register' && App.pendingEmailVerification && !document.getElementById('emailPin').value.trim()) {
       showToast('กรุณากรอก PIN ที่ได้รับทางอีเมล', true);
       document.getElementById('emailPin').focus();
@@ -401,6 +481,40 @@
     }
   }
 
+  async function submitForgotPassword() {
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+      showToast('กรุณากรอกอีเมล', true);
+      document.getElementById('email').focus();
+      return;
+    }
+    setLoading(true);
+    try {
+      if (App.forgotStep === 'email') {
+        const result = await api('requestPasswordReset', email);
+        showToast(result.message || 'ส่ง PIN ไปยังอีเมลแล้ว');
+        App.forgotStep = 'reset';
+        refreshAuthFormUI();
+        document.getElementById('forgotPin').focus();
+      } else {
+        const pin = document.getElementById('forgotPin').value.trim();
+        const newPassword = document.getElementById('forgotNewPassword').value;
+        if (!pin || !newPassword) {
+          showToast('กรุณากรอก PIN และรหัสผ่านใหม่ให้ครบ', true);
+          return;
+        }
+        const result = await api('resetPasswordWithPin', { email, pin, newPassword });
+        showToast('ตั้งรหัสผ่านใหม่เรียบร้อย เข้าสู่ระบบให้อัตโนมัติ');
+        setAuthMode('login');
+        applySessionResult(result);
+      }
+    } catch (error) {
+      showToast(error.message || 'ดำเนินการไม่สำเร็จ', true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function logout() {
     setLoading(true);
     try {
@@ -420,6 +534,7 @@
 
   function renderAll() {
     if (!App.data) return;
+    syncCategoriesFromData();
     renderProfile();
     renderDashboard();
     renderTransactions();
@@ -428,7 +543,15 @@
     renderRecurring();
     renderAnalytics();
     hydrateSettings();
+    renderCategoryManager();
     renderIcons();
+  }
+
+  // อัปเดตลิสต์ชื่อหมวดหมู่ (สำหรับ dropdown ต่างๆ) ให้ตรงกับข้อมูลล่าสุดจากเซิร์ฟเวอร์เสมอ
+  function syncCategoriesFromData() {
+    const categories = App.data.categories || { expense: [], income: [] };
+    App.categories.expense = categories.expense.map((item) => item.name);
+    App.categories.income = categories.income.map((item) => item.name);
   }
 
   function setView(view) {
@@ -574,13 +697,20 @@
         <label class="form-label" for="${prefix}Note">โน้ต</label>
         <textarea id="${prefix}Note" class="form-input" rows="3" placeholder="ระบุเพิ่มเติมได้"></textarea>
       </div>
-      <div>
-        <label class="form-label" for="${prefix}Date">วันที่</label>
-        <input id="${prefix}Date" class="form-input" type="date" required>
+      <div class="form-row-2">
+        <div>
+          <label class="form-label" for="${prefix}Date">วันที่</label>
+          <input id="${prefix}Date" class="form-input" type="date" required>
+        </div>
+        <div>
+          <label class="form-label" for="${prefix}Time">เวลา</label>
+          <input id="${prefix}Time" class="form-input" type="time" required>
+        </div>
       </div>
       <button id="${prefix}Submit" class="primary-btn w-full" type="submit"><i data-lucide="save"></i><span>บันทึกทันที</span></button>
     `;
     document.getElementById(prefix + 'Date').value = today();
+    document.getElementById(prefix + 'Time').value = currentTime();
     updateCategoryOptions(prefix, 'expense');
 
     form.querySelectorAll('[data-type]').forEach((button) => {
@@ -657,6 +787,9 @@
     document.getElementById(prefix + 'Amount').value = transaction ? transaction.amount : '';
     document.getElementById(prefix + 'Note').value = transaction ? (transaction.note || '') : '';
     document.getElementById(prefix + 'Date').value = transaction ? transaction.date : today();
+    document.getElementById(prefix + 'Time').value = transaction && timeDisplay(transaction.createdAt)
+      ? timeDisplay(transaction.createdAt)
+      : currentTime();
     document.getElementById(prefix + 'Submit').innerHTML = transaction
       ? '<i data-lucide="save"></i><span>บันทึกการแก้ไข</span>'
       : '<i data-lucide="save"></i><span>บันทึกทันที</span>';
@@ -689,6 +822,7 @@
       category: document.getElementById(prefix + 'Category').value,
       note: document.getElementById(prefix + 'Note').value,
       date: document.getElementById(prefix + 'Date').value,
+      time: document.getElementById(prefix + 'Time').value,
     };
     setLoading(true);
     try {
@@ -699,6 +833,7 @@
       document.getElementById(prefix + 'Amount').value = '';
       document.getElementById(prefix + 'Note').value = '';
       document.getElementById(prefix + 'Date').value = today();
+      document.getElementById(prefix + 'Time').value = currentTime();
       closeTransactionModal();
       renderAll();
       showToast(wasEditing ? 'แก้ไขรายการแล้ว' : 'บันทึกรายการแล้ว');
@@ -741,6 +876,9 @@
       .trim() || 'อื่นๆ';
   }
 
+  // หมวดหมู่ที่เคยเพิ่มไว้ในเครื่องก่อนหน้านี้ (ตอนที่ระบบยังเก็บแค่ใน localStorage)
+  // ยังโหลดมาต่อชั่วคราวเพื่อไม่ให้หายไปจาก dropdown — พอผู้ใช้บันทึกรายการด้วยหมวดนี้อีกครั้ง
+  // เซิร์ฟเวอร์จะสร้างให้ถาวรอัตโนมัติ (ดู ensureCategoryExists_ ฝั่ง Code.js)
   function loadCustomCategories() {
     try {
       const stored = JSON.parse(localStorage.getItem('moneyflow_custom_categories') || '{}');
@@ -754,18 +892,12 @@
     }
   }
 
+  // เพิ่มหมวดหมู่ใหม่ชั่วคราวฝั่งหน้าจอ (สำหรับ dropdown ปัจจุบัน) — จะถูกบันทึกถาวรที่เซิร์ฟเวอร์
+  // อัตโนมัติทันทีที่รายการ/งบ/รายการประจำที่ใช้หมวดนี้ถูกบันทึกจริง
   function addCustomCategory(type, name) {
     const clean = String(name || '').trim();
     if (!clean) return;
     if (!App.categories[type].includes(clean)) App.categories[type].push(clean);
-    try {
-      const stored = JSON.parse(localStorage.getItem('moneyflow_custom_categories') || '{}');
-      stored[type] = stored[type] || [];
-      if (!stored[type].includes(clean)) stored[type].push(clean);
-      localStorage.setItem('moneyflow_custom_categories', JSON.stringify(stored));
-    } catch (error) {
-      // ข้าม ถ้าบันทึกลง localStorage ไม่ได้
-    }
   }
 
   function learnedCategoryKey(type, itemName) {
@@ -1405,7 +1537,7 @@
     list.innerHTML = orderedGroups.map((group) => {
       const rows = [...group.txs]
         .sort((a, b) => String(b.date + b.createdAt).localeCompare(String(a.date + a.createdAt)))
-        .map(ledgerRowHtml)
+        .map((tx) => ledgerRowHtml(tx, level))
         .join('');
       return `
         <div class="ledger-group">
@@ -1419,10 +1551,13 @@
     renderIcons();
   }
 
-  function ledgerRowHtml(tx) {
+  function ledgerRowHtml(tx, level) {
     const isIncome = tx.type === 'income';
     const source = tx.source === 'recurring' ? ' · อัตโนมัติ' : '';
-    const meta = `${timeDisplay(tx.createdAt) ? timeDisplay(tx.createdAt) + ' น.' : ''}${source}${tx.note ? ' · ' + escapeHtml(tx.note) : ''}`;
+    // รายวันมีวันที่อยู่ในหัวกลุ่มอยู่แล้ว ส่วนรายสัปดาห์/รายเดือนกำกับวันที่ต่อรายการไว้ด้วย
+    const rowDate = level !== 'day' ? rowDateDisplay_(tx.date) : '';
+    const time = timeDisplay(tx.createdAt) ? timeDisplay(tx.createdAt) + ' น.' : '';
+    const meta = `${rowDate}${rowDate && time ? ' · ' : ''}${time}${source}${tx.note ? ' · ' + escapeHtml(tx.note) : ''}`;
     return `
       <div class="ledger-row" data-tx-id="${tx.transactionId}">
         <div class="desc">${escapeHtml(tx.category)}${meta ? `<span>${meta}</span>` : ''}</div>
@@ -1476,17 +1611,25 @@
       });
     });
     root.querySelectorAll('[data-delete-tx]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        setLoading(true);
-        try {
-          App.data = await api('deleteTransaction', App.token, button.dataset.deleteTx);
-          renderAll();
-          showToast('ลบรายการแล้ว');
-        } catch (error) {
-          showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
-        } finally {
-          setLoading(false);
-        }
+      button.addEventListener('click', () => {
+        const row = button.closest('.transaction-row');
+        const transactionId = button.dataset.deleteTx;
+        startUndoDelete({
+          message: 'ลบรายการแล้ว',
+          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
+          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+          onCommit: async () => {
+            setLoading(true);
+            try {
+              App.data = await api('deleteTransaction', App.token, transactionId);
+              renderAll();
+            } catch (error) {
+              showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
       });
     });
     renderIcons();
@@ -1675,6 +1818,8 @@
       const ringCircumference = 2 * Math.PI * 16;
       const daysLeft = daysLeftInPeriod(budget.periodEnd);
       const cardClass = budget.overBudget ? 'is-over-budget' : (isPrimary ? 'is-primary-budget' : '');
+      const accentColor = categoryColorFor(budget.category);
+      const accentStyle = accentColor ? ` style="--accent:${accentColor}"` : '';
       const stepper = App.budgetShowOverOnly ? '' : `
         <div class="order-stepper">
           <button data-move-budget="up" data-budget-order-id="${budget.budgetId}" type="button" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up"></i></button>
@@ -1682,7 +1827,7 @@
         </div>
       `;
       return `
-      <div class="envelope is-budget ${cardClass}" data-budget-id="${budget.budgetId}">
+      <div class="envelope is-budget ${cardClass}" data-budget-id="${budget.budgetId}"${accentStyle}>
         <div class="envelope-top">
           <div class="flex items-center gap-1" style="flex-wrap:wrap;">
             ${isPrimary ? '<span class="status-pill is-primary-pill">⭐ หลัก</span>' : ''}
@@ -1700,6 +1845,7 @@
               <circle class="ring-track" cx="18" cy="18" r="16"></circle>
               <circle class="ring-fill" cx="18" cy="18" r="16" style="stroke-dasharray:${ringCircumference};stroke-dashoffset:${ringCircumference * (1 - ratioClamped)}"></circle>
             </svg>
+            <span class="ring-icon-bg"></span>
             <span class="ring-icon"><i data-lucide="${budgetIconFor(budget.category)}"></i></span>
           </div>
           <div class="min-w-0">
@@ -1726,19 +1872,26 @@
       });
     });
     list.querySelectorAll('[data-delete-budget]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        if (!confirm('ต้องการลบงบประมาณนี้ใช่หรือไม่?')) return;
-        setLoading(true);
-        try {
-          App.data = await api('deleteBudget', App.token, button.dataset.deleteBudget);
-          if (document.getElementById('budgetEditingId').value === button.dataset.deleteBudget) resetBudgetForm();
-          renderAll();
-          showToast('ลบงบประมาณแล้ว');
-        } catch (error) {
-          showToast(error.message || 'ลบงบไม่สำเร็จ', true);
-        } finally {
-          setLoading(false);
-        }
+      button.addEventListener('click', () => {
+        const row = button.closest('.envelope');
+        const budgetId = button.dataset.deleteBudget;
+        startUndoDelete({
+          message: 'ลบงบประมาณแล้ว',
+          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
+          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+          onCommit: async () => {
+            setLoading(true);
+            try {
+              App.data = await api('deleteBudget', App.token, budgetId);
+              if (document.getElementById('budgetEditingId').value === budgetId) resetBudgetForm();
+              renderAll();
+            } catch (error) {
+              showToast(error.message || 'ลบงบไม่สำเร็จ', true);
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
       });
     });
     renderIcons();
@@ -1847,29 +2000,35 @@
     `).join('') : emptyHtml('ไม่มีรายการอื่นแล้ว');
 
     list.querySelectorAll('[data-delete-rec]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await removeRecurring(button.dataset.deleteRec);
+      button.addEventListener('click', () => {
+        removeRecurring(button.dataset.deleteRec, button.closest('.tl-item'));
       });
     });
   }
 
-  async function deleteNextRecurring() {
+  function deleteNextRecurring() {
     const id = document.getElementById('recurringNextDelete').dataset.recurringId;
     if (!id) return;
-    await removeRecurring(id);
+    removeRecurring(id, document.getElementById('recurringNextTicket'));
   }
 
-  async function removeRecurring(recurringId) {
-    setLoading(true);
-    try {
-      App.data = await api('deleteRecurring', App.token, recurringId);
-      renderAll();
-      showToast('ลบรายการประจำแล้ว');
-    } catch (error) {
-      showToast(error.message || 'ลบรายการประจำไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+  function removeRecurring(recurringId, rowEl) {
+    startUndoDelete({
+      message: 'ลบรายการประจำแล้ว',
+      onHide: () => { if (rowEl) rowEl.classList.add('is-pending-delete'); },
+      onShow: () => { if (rowEl) rowEl.classList.remove('is-pending-delete'); },
+      onCommit: async () => {
+        setLoading(true);
+        try {
+          App.data = await api('deleteRecurring', App.token, recurringId);
+          renderAll();
+        } catch (error) {
+          showToast(error.message || 'ลบรายการประจำไม่สำเร็จ', true);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   }
 
   function renderSavingsGoalIconPicker(selectedIcon) {
@@ -1936,18 +2095,24 @@
     }
   }
 
-  async function removeSavingsGoal(savingsGoalId) {
-    if (!confirm('ต้องการลบเป้าหมายการออมนี้ใช่หรือไม่?')) return;
-    setLoading(true);
-    try {
-      App.data = await api('deleteSavingsGoal', App.token, savingsGoalId);
-      renderAll();
-      showToast('ลบเป้าหมายการออมแล้ว');
-    } catch (error) {
-      showToast(error.message || 'ลบเป้าหมายไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+  function removeSavingsGoal(savingsGoalId, triggerEl) {
+    const row = triggerEl ? triggerEl.closest('.envelope') : null;
+    startUndoDelete({
+      message: 'ลบเป้าหมายการออมแล้ว',
+      onHide: () => { if (row) row.classList.add('is-pending-delete'); },
+      onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+      onCommit: async () => {
+        setLoading(true);
+        try {
+          App.data = await api('deleteSavingsGoal', App.token, savingsGoalId);
+          renderAll();
+        } catch (error) {
+          showToast(error.message || 'ลบเป้าหมายไม่สำเร็จ', true);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   }
 
   function setSavingsDirection(direction) {
@@ -2045,18 +2210,24 @@
     setTimeout(() => layer.remove(), 2600);
   }
 
-  async function removeSavingsLog(savingsLogId) {
-    if (!confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
-    setLoading(true);
-    try {
-      App.data = await api('deleteSavingsLog', App.token, savingsLogId);
-      renderAll();
-      showToast('ลบรายการแล้ว');
-    } catch (error) {
-      showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+  function removeSavingsLog(savingsLogId, triggerEl) {
+    const row = triggerEl ? triggerEl.closest('.transaction-row') : null;
+    startUndoDelete({
+      message: 'ลบรายการแล้ว',
+      onHide: () => { if (row) row.classList.add('is-pending-delete'); },
+      onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+      onCommit: async () => {
+        setLoading(true);
+        try {
+          App.data = await api('deleteSavingsLog', App.token, savingsLogId);
+          renderAll();
+        } catch (error) {
+          showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   }
 
   function savingsLogRowHtml(log, goalName) {
@@ -2096,6 +2267,7 @@
           <circle class="ring-track" cx="18" cy="18" r="16"></circle>
           <circle class="ring-fill" cx="18" cy="18" r="16" style="stroke-dasharray:${circumference};stroke-dashoffset:${goal.targetAmount ? offset : circumference}"></circle>
         </svg>
+        <span class="ring-icon-bg"></span>
         <span class="ring-icon"><i data-lucide="${goal.icon || 'piggy-bank'}"></i></span>
       </div>
     `;
@@ -2143,8 +2315,11 @@
       const progressHtml = goal.targetAmount
         ? `<small>เหลืออีก ${money(goal.remaining)} จากเป้า ${money(goal.targetAmount)}</small>`
         : `<small>${goal.note ? escapeHtml(goal.note) : 'ยังไม่ได้ตั้งเป้าหมาย'}</small>`;
+      // เป้าหมายที่สำเร็จแล้วใช้โทนเขียวเฉลิมฉลองของตัวเองอยู่แล้ว เลยไม่ใส่สีสุ่มทับ กันดูรกตา
+      const accentColor = goal.completed ? '' : colorForSeed(goal.savingsGoalId);
+      const accentStyle = accentColor ? ` style="--accent:${accentColor}"` : '';
       return `
-      <div class="envelope is-savings ${goal.completed ? 'is-goal-complete' : ''}" data-savings-goal-id="${goal.savingsGoalId}">
+      <div class="envelope is-savings ${goal.completed ? 'is-goal-complete' : ''}" data-savings-goal-id="${goal.savingsGoalId}"${accentStyle}>
         <div class="envelope-top">
           <span class="status-pill">${goal.completed ? 'สำเร็จแล้ว 🎉' : (goal.targetAmount ? goal.percent + '%' : 'ไม่มีเป้าหมาย')}</span>
           <div class="envelope-actions">
@@ -2181,7 +2356,7 @@
       });
     });
     goalList.querySelectorAll('[data-delete-savings-goal]').forEach((button) => {
-      button.addEventListener('click', () => removeSavingsGoal(button.dataset.deleteSavingsGoal));
+      button.addEventListener('click', () => removeSavingsGoal(button.dataset.deleteSavingsGoal, button));
     });
     goalList.querySelectorAll('[data-deposit-goal]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -2213,7 +2388,7 @@
       ? logs.map((log) => savingsLogRowHtml(log, goalNameById[log.savingsGoalId])).join('')
       : emptyHtml((App.data.savingsLogs || []).length ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีประวัติการฝาก-ถอน');
     logList.querySelectorAll('[data-delete-savings-log]').forEach((button) => {
-      button.addEventListener('click', () => removeSavingsLog(button.dataset.deleteSavingsLog));
+      button.addEventListener('click', () => removeSavingsLog(button.dataset.deleteSavingsLog, button));
     });
 
     renderIcons();
@@ -2244,6 +2419,8 @@
       const stats = budget.overspend || { totalCycles: 0, overCount: 0, overProbabilityPercent: 0, totalOverAmount: 0, avgOverPercent: 0, avgSpent: 0 };
       const name = budget.category ? escapeHtml(budget.category) : 'ทุกหมวด';
       const periodLabel = App.periodLabel[budget.period] || budget.period;
+      // งบรายวัน/รายสัปดาห์ดูสถิติย้อนหลัง 1 เดือน ส่วนงบรายเดือนดูย้อนหลัง 1 ปี (ดูฝั่ง Code.js: computeBudgetOverspendStats_)
+      const windowLabel = budget.period === 'monthly' ? 'ใน 1 ปีที่ผ่านมา' : 'ใน 1 เดือนที่ผ่านมา';
 
       if (!stats.totalCycles) {
         return `
@@ -2251,13 +2428,26 @@
             <div class="overspend-card-head">
               <span class="name">${name} <span class="status-pill">${periodLabel}</span></span>
             </div>
-            <p class="overspend-note">ยังไม่มีรอบงบประมาณที่ครบกำหนด รอครบรอบแรกก่อนถึงจะเริ่มเก็บสถิติได้</p>
+            <p class="overspend-note">ยังไม่มีรอบงบประมาณที่ครบกำหนด${windowLabel} รอครบรอบแรกก่อนถึงจะเริ่มเก็บสถิติได้</p>
           </div>
         `;
       }
 
-      const pillClass = stats.overCount > 0 ? 'danger' : 'ok';
-      const pillText = stats.overCount > 0 ? `เกินงบ ${stats.overCount}/${stats.totalCycles} รอบ` : `ไม่เคยเกินงบ (${stats.totalCycles} รอบ)`;
+      // เคยเกินงบอย่างน้อย 1 ครั้งเท่านั้นถึงจะแสดงสถิติแบบเต็ม ส่วนที่ยังไม่เคยเกินโชว์แค่บรรทัดสั้น ๆ
+      if (!stats.overCount) {
+        return `
+          <div class="overspend-card">
+            <div class="overspend-card-head">
+              <span class="name">${name} <span class="status-pill">${periodLabel}</span></span>
+              <span class="status-pill ok">ยังไม่เกินงบ</span>
+            </div>
+            <p class="overspend-note">ยังไม่เคยเกินงบใน ${stats.totalCycles} รอบที่ผ่านมา${windowLabel} (วงเงิน ${money(budget.amount)})</p>
+          </div>
+        `;
+      }
+
+      const pillClass = 'danger';
+      const pillText = `เกินงบ ${stats.overCount}/${stats.totalCycles} รอบ`;
 
       return `
         <div class="overspend-card">
@@ -2283,7 +2473,7 @@
               <span class="val ${stats.overProbabilityPercent >= 50 ? 'danger' : ''}">${stats.overProbabilityPercent}%</span>
             </div>
           </div>
-          <p class="overspend-note">ใช้จ่ายเฉลี่ย ${money(stats.avgSpent)} ต่อรอบ จากทั้งหมด ${stats.totalCycles} รอบที่ผ่านมา (วงเงิน ${money(budget.amount)})</p>
+          <p class="overspend-note">ใช้จ่ายเฉลี่ย ${money(stats.avgSpent)} ต่อรอบ จากทั้งหมด ${stats.totalCycles} รอบ${windowLabel} (วงเงิน ${money(budget.amount)})</p>
         </div>
       `;
     }).join('');
@@ -2380,6 +2570,193 @@
         },
       },
     });
+  }
+
+  // ============ จัดการหมวดหมู่ (Settings) ============
+  function renderCategoryManager() {
+    const list = document.getElementById('categoryManagerList');
+    if (!list || !App.data.categories) return;
+    const type = App.categoryManagerType;
+    const items = (App.data.categories[type] || []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+
+    list.innerHTML = items.length ? items.map((category, index) => `
+      <div class="category-row" data-category-id="${category.categoryId}">
+        <div class="swatch" style="background:${category.color}"><i data-lucide="${category.icon}"></i></div>
+        <span class="name truncate">${escapeHtml(category.name)}</span>
+        <div class="actions">
+          <div class="order-stepper">
+            <button data-move-category="up" data-category-order-id="${category.categoryId}" type="button" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up"></i></button>
+            <button data-move-category="down" data-category-order-id="${category.categoryId}" type="button" title="เลื่อนลง" ${index === items.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down"></i></button>
+          </div>
+          <button class="icon-chip-sm" data-edit-category="${category.categoryId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
+          ${category.name === 'อื่นๆ' ? '' : `<button class="icon-chip-sm danger" data-delete-category="${category.categoryId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>`}
+        </div>
+      </div>
+    `).join('') : emptyHtml('ยังไม่มีหมวดหมู่');
+
+    list.querySelectorAll('[data-move-category]').forEach((button) => {
+      button.addEventListener('click', () => moveCategory(button.dataset.categoryOrderId, button.dataset.moveCategory));
+    });
+    list.querySelectorAll('[data-edit-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const category = items.find((item) => item.categoryId === button.dataset.editCategory);
+        if (category) openCategoryFormModal(category);
+      });
+    });
+    list.querySelectorAll('[data-delete-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const row = button.closest('.category-row');
+        const categoryId = button.dataset.deleteCategory;
+        startUndoDelete({
+          message: 'ลบหมวดหมู่แล้ว',
+          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
+          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+          onCommit: async () => {
+            setLoading(true);
+            try {
+              App.data = await api('deleteCategory', App.token, categoryId);
+              renderAll();
+            } catch (error) {
+              showToast(error.message || 'ลบหมวดหมู่ไม่สำเร็จ', true);
+              renderCategoryManager();
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+      });
+    });
+    renderIcons();
+  }
+
+  async function moveCategory(categoryId, direction) {
+    const type = App.categoryManagerType;
+    const items = (App.data.categories[type] || []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+    const index = items.findIndex((item) => item.categoryId === categoryId);
+    if (index < 0) return;
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= items.length) return;
+
+    const orderedIds = items.map((item) => item.categoryId);
+    [orderedIds[index], orderedIds[swapWith]] = [orderedIds[swapWith], orderedIds[index]];
+
+    setLoading(true);
+    try {
+      App.data = await api('reorderCategories', App.token, type, orderedIds);
+      renderAll();
+    } catch (error) {
+      showToast(error.message || 'จัดลำดับไม่สำเร็จ', true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderCategoryIconPicker(selectedIcon) {
+    const picker = document.getElementById('categoryIconPicker');
+    const active = selectedIcon || 'tag';
+    picker.innerHTML = CATEGORY_ICONS.map((icon) => `
+      <button type="button" data-category-icon-choice="${icon}" class="${icon === active ? 'active' : ''}" title="${icon}">
+        <i data-lucide="${icon}"></i>
+      </button>
+    `).join('');
+    picker.querySelectorAll('[data-category-icon-choice]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.getElementById('categoryIcon').value = button.dataset.categoryIconChoice;
+        picker.querySelectorAll('[data-category-icon-choice]').forEach((item) => item.classList.toggle('active', item === button));
+      });
+    });
+  }
+
+  function renderCategoryColorPicker(selectedColor) {
+    const picker = document.getElementById('categoryColorPicker');
+    const active = selectedColor || CATEGORY_COLORS[0];
+    picker.innerHTML = CATEGORY_COLORS.map((color) => `
+      <button type="button" data-category-color-choice="${color}" class="${color === active ? 'active' : ''}" style="background:${color}" title="${color}"></button>
+    `).join('');
+    picker.querySelectorAll('[data-category-color-choice]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.getElementById('categoryColor').value = button.dataset.categoryColorChoice;
+        picker.querySelectorAll('[data-category-color-choice]').forEach((item) => item.classList.toggle('active', item === button));
+      });
+    });
+  }
+
+  function openCategoryFormModal(category) {
+    document.getElementById('categoryFormModalTitle').textContent = category ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่';
+    document.getElementById('categoryEditingId').value = category ? category.categoryId : '';
+    document.getElementById('categoryEditingType').value = category ? category.type : App.categoryManagerType;
+    document.getElementById('categoryName').value = category ? category.name : '';
+    document.getElementById('categoryIcon').value = category ? category.icon : 'tag';
+    document.getElementById('categoryColor').value = category ? category.color : CATEGORY_COLORS[0];
+    renderCategoryIconPicker(document.getElementById('categoryIcon').value);
+    renderCategoryColorPicker(document.getElementById('categoryColor').value);
+    document.getElementById('categorySubmitLabel').textContent = category ? 'บันทึกการแก้ไข' : 'บันทึกหมวดหมู่';
+    renderIcons();
+  }
+
+  async function submitCategory(event) {
+    event.preventDefault();
+    const payload = {
+      categoryId: document.getElementById('categoryEditingId').value,
+      type: document.getElementById('categoryEditingType').value,
+      name: document.getElementById('categoryName').value,
+      icon: document.getElementById('categoryIcon').value,
+      color: document.getElementById('categoryColor').value,
+    };
+    setLoading(true);
+    try {
+      App.data = await api('saveCategory', App.token, payload);
+      document.getElementById('categoryFormModal').classList.add('hidden');
+      document.body.classList.remove('modal-open');
+      document.getElementById('categoryForm').reset();
+      renderAll();
+      showToast('บันทึกหมวดหมู่แล้ว');
+    } catch (error) {
+      showToast(error.message || 'บันทึกหมวดหมู่ไม่สำเร็จ', true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ============ ส่งออกข้อมูลเป็น CSV ============
+  function csvEscape_(value) {
+    const str = String(value === undefined || value === null ? '' : value);
+    if (/[",\r\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
+    return str;
+  }
+
+  function downloadCsv_(filename, rows) {
+    const csv = rows.map((row) => row.map(csvEscape_).join(',')).join('\r\n');
+    // ใส่ BOM นำหน้าเพื่อให้ Excel เปิดอ่านภาษาไทยได้ถูกต้อง ไม่เป็นตัวอักษรมั่ว
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportTransactionsCsv() {
+    const rows = [['วันที่', 'ประเภท', 'หมวดหมู่', 'จำนวนเงิน', 'โน้ต']];
+    (App.data.transactions || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((tx) => {
+      rows.push([tx.date, tx.type === 'income' ? 'รายรับ' : 'รายจ่าย', tx.category, tx.amount, tx.note || '']);
+    });
+    downloadCsv_(`finnote-transactions-${today()}.csv`, rows);
+    showToast('ดาวน์โหลดไฟล์ CSV แล้ว');
+  }
+
+  function exportSavingsCsv() {
+    const goalNameById = {};
+    (App.data.savingsGoals || []).forEach((goal) => { goalNameById[goal.savingsGoalId] = goal.name; });
+    const rows = [['วันที่', 'เป้าหมาย', 'ประเภท', 'จำนวนเงิน', 'โน้ต']];
+    (App.data.savingsLogs || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((log) => {
+      rows.push([log.date, goalNameById[log.savingsGoalId] || '', log.direction === 'withdraw' ? 'ถอน' : 'ฝาก', log.amount, log.note || '']);
+    });
+    downloadCsv_(`finnote-savings-${today()}.csv`, rows);
+    showToast('ดาวน์โหลดไฟล์ CSV แล้ว');
   }
 
   function hydrateSettings() {
@@ -2481,6 +2858,43 @@
     document.getElementById('loadingOverlay').classList.toggle('hidden', !isLoading);
   }
 
+  let activeUndo_ = null;
+
+  // ทดแทน confirm() สำหรับการลบ — ซ่อนรายการทันที (ยังลบจริงไม่เกิดขึ้น) พร้อมโชว์ toast ให้กด
+  // "เลิกทำ" ได้ภายในเวลาที่กำหนด ถ้าไม่กดจะเรียก onCommit (เช่น ยิง API ลบจริง) เมื่อหมดเวลา
+  function startUndoDelete({ message, onHide, onShow, onCommit, duration = 5000 }) {
+    if (activeUndo_) {
+      clearTimeout(activeUndo_.timer);
+      activeUndo_.commit();
+    }
+    if (onHide) onHide();
+
+    const toast = document.getElementById('undoToast');
+    document.getElementById('undoToastMessage').textContent = message;
+    toast.classList.remove('hidden');
+    const bar = toast.querySelector('.undo-progress');
+    bar.style.animation = 'none';
+    void bar.offsetWidth;
+    bar.style.animation = `undo-countdown ${duration}ms linear forwards`;
+
+    const commit = () => {
+      toast.classList.add('hidden');
+      activeUndo_ = null;
+      onCommit();
+    };
+    const timer = setTimeout(commit, duration);
+    activeUndo_ = {
+      timer,
+      commit,
+      cancel: () => {
+        clearTimeout(timer);
+        toast.classList.add('hidden');
+        activeUndo_ = null;
+        if (onShow) onShow();
+      },
+    };
+  }
+
   function showToast(message, isError = false) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -2509,10 +2923,23 @@
     return date.toISOString().slice(0, 10);
   }
 
+  function currentTime() {
+    const date = new Date();
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+
   function dateDisplay(value) {
     if (!value) return '';
     const parts = String(value).split('-').map(Number);
     return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+      .format(new Date(parts[0], parts[1] - 1, parts[2]));
+  }
+
+  // วันที่แบบสั้น (ไม่มีปี) สำหรับกำกับรายการย่อยในหน้าประวัติเมื่อจัดกลุ่มแบบรายสัปดาห์/รายเดือน
+  function rowDateDisplay_(value) {
+    if (!value) return '';
+    const parts = String(value).split('-').map(Number);
+    return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' })
       .format(new Date(parts[0], parts[1] - 1, parts[2]));
   }
 

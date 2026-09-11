@@ -1,6 +1,8 @@
 const APP = {
   name: 'FinNote',
   tokenTtlSeconds: 21600,
+  maxLoginAttempts: 5,
+  lockoutMinutes: 15,
   sheets: {
     users: 'Users',
     transactions: 'Transactions',
@@ -9,9 +11,10 @@ const APP = {
     settings: 'Settings',
     savingsGoals: 'SavingsGoals',
     savingsLogs: 'SavingsLogs',
+    categories: 'Categories',
   },
   headers: {
-    Users: ['userId', 'email', 'passwordHash', 'passwordSalt', 'displayName', 'profileImage', 'createdAt', 'updatedAt', 'lastLogin', 'rememberTokenHash'],
+    Users: ['userId', 'email', 'passwordHash', 'passwordSalt', 'displayName', 'profileImage', 'createdAt', 'updatedAt', 'lastLogin', 'rememberTokenHash', 'failedLoginCount', 'lockedUntil'],
     Transactions: ['transactionId', 'userId', 'type', 'amount', 'category', 'note', 'date', 'createdAt', 'source', 'recurringId'],
     Budget: ['budgetId', 'userId', 'period', 'amount', 'category', 'startDate', 'sortOrder', 'createdAt', 'updatedAt'],
     Recurring: ['recurringId', 'userId', 'type', 'amount', 'category', 'note', 'frequency', 'nextRunDate', 'active', 'createdAt', 'updatedAt', 'lastRunAt'],
@@ -20,6 +23,7 @@ const APP = {
     // ไม่กระทบการคำนวณงบประมาณ/สถิติที่อ้างอิงเฉพาะ type income/expense ใน Transactions
     SavingsGoals: ['savingsGoalId', 'userId', 'name', 'icon', 'targetAmount', 'note', 'archived', 'createdAt', 'updatedAt'],
     SavingsLogs: ['savingsLogId', 'userId', 'savingsGoalId', 'direction', 'amount', 'note', 'date', 'createdAt'],
+    Categories: ['categoryId', 'userId', 'type', 'name', 'icon', 'color', 'sortOrder', 'createdAt', 'updatedAt'],
   },
 };
 
@@ -168,14 +172,89 @@ function loginUser(payload) {
   const password = String(payload.password || '');
   const users = getSheetData_(APP.sheets.users);
   const user = users.rows.find(function (row) { return normalizeEmail_(row.email) === email; });
+
+  if (user && user.lockedUntil && String(user.lockedUntil) > nowIso_()) {
+    const minutesLeft = Math.max(1, Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000));
+    throw new Error('บัญชีนี้ถูกล็อกชั่วคราวเนื่องจากใส่รหัสผ่านผิดหลายครั้งเกินไป กรุณาลองใหม่อีกครั้งในอีกประมาณ ' + minutesLeft + ' นาที หรือกด "ลืมรหัสผ่าน?" เพื่อตั้งรหัสผ่านใหม่');
+  }
+
   if (!user || hashPassword_(password, user.passwordSalt) !== user.passwordHash) {
+    if (user) {
+      const failedCount = Number(user.failedLoginCount || 0) + 1;
+      const patch = { failedLoginCount: failedCount, updatedAt: nowIso_() };
+      if (failedCount >= APP.maxLoginAttempts) {
+        patch.lockedUntil = Utilities.formatDate(
+          new Date(Date.now() + APP.lockoutMinutes * 60000),
+          Session.getScriptTimeZone(),
+          "yyyy-MM-dd'T'HH:mm:ssXXX"
+        );
+        patch.failedLoginCount = 0;
+      }
+      updateObjectByKey_(APP.sheets.users, 'userId', user.userId, patch);
+    }
     throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
   }
 
   updateObjectByKey_(APP.sheets.users, 'userId', user.userId, {
     lastLogin: nowIso_(),
     updatedAt: nowIso_(),
+    failedLoginCount: 0,
+    lockedUntil: '',
   });
+  const rememberToken = issueRememberToken_(user.userId);
+  return createSessionResponse_(getUserById_(user.userId), rememberToken);
+}
+
+// ขอ PIN สำหรับตั้งรหัสผ่านใหม่ — ตอบกลับข้อความเดียวกันเสมอไม่ว่าอีเมลจะมีอยู่จริงหรือไม่ (กันการสุ่มเช็คว่าอีเมลไหนสมัครไว้)
+function requestPasswordReset(email) {
+  setupSheets();
+  const normalizedEmail = normalizeEmail_(email);
+  const generic = { ok: true, message: 'หากอีเมลนี้มีอยู่ในระบบ เราได้ส่ง PIN สำหรับตั้งรหัสผ่านใหม่ไปให้ทางอีเมลแล้ว' };
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return generic;
+
+  const user = getSheetData_(APP.sheets.users).rows.find(function (row) { return normalizeEmail_(row.email) === normalizedEmail; });
+  if (!user) return generic;
+
+  const pin = createRegistrationPin_();
+  CacheService.getScriptCache().put(getPasswordResetPinKey_(normalizedEmail), hashResetPin_(normalizedEmail, pin), 600);
+  GmailApp.sendEmail(
+    normalizedEmail,
+    'FinNote: PIN สำหรับตั้งรหัสผ่านใหม่',
+    'PIN สำหรับตั้งรหัสผ่านใหม่ของคุณคือ ' + pin + '\n\nรหัสนี้จะหมดอายุภายใน 10 นาที หากคุณไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้ได้เลย\n\n- FinNote'
+  );
+  return generic;
+}
+
+// ตั้งรหัสผ่านใหม่ด้วย PIN ที่ส่งไปทางอีเมล แล้วล็อกอินให้อัตโนมัติ
+function resetPasswordWithPin(payload) {
+  setupSheets();
+  payload = payload || {};
+  const email = normalizeEmail_(payload.email);
+  const pin = String(payload.pin || '').trim();
+  const newPassword = String(payload.newPassword || '');
+
+  if (newPassword.length < 8) throw new Error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+
+  const cacheKey = getPasswordResetPinKey_(email);
+  const expectedHash = CacheService.getScriptCache().get(cacheKey);
+  if (!expectedHash || expectedHash !== hashResetPin_(email, pin)) {
+    throw new Error('PIN ไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่');
+  }
+
+  const user = getSheetData_(APP.sheets.users).rows.find(function (row) { return normalizeEmail_(row.email) === email; });
+  if (!user) throw new Error('ไม่พบบัญชีผู้ใช้นี้');
+
+  CacheService.getScriptCache().remove(cacheKey);
+
+  const salt = makeId_('salt');
+  updateObjectByKey_(APP.sheets.users, 'userId', user.userId, {
+    passwordHash: hashPassword_(newPassword, salt),
+    passwordSalt: salt,
+    updatedAt: nowIso_(),
+    failedLoginCount: 0,
+    lockedUntil: '',
+  });
+
   const rememberToken = issueRememberToken_(user.userId);
   return createSessionResponse_(getUserById_(user.userId), rememberToken);
 }
@@ -253,10 +332,11 @@ function saveTransaction(token, payload) {
     category: category,
     note: sanitizeText_(payload.note || '', 300),
     date: date,
-    createdAt: nowIso_(),
+    createdAt: payload.time ? composeDateTimeIso_(date, payload.time) : nowIso_(),
     source: payload.source || 'manual',
     recurringId: payload.recurringId || '',
   });
+  ensureCategoryExists_(user.userId, type, category);
 
   return buildAppData_(user.userId);
 }
@@ -289,6 +369,7 @@ function saveTransactions(token, payloads) {
       source: payload.source || 'manual',
       recurringId: payload.recurringId || '',
     });
+    ensureCategoryExists_(user.userId, type, category);
   });
 
   return buildAppData_(user.userId);
@@ -311,13 +392,16 @@ function updateTransaction(token, transactionId, payload) {
   if (!amount || amount <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0');
   if (!category) throw new Error('กรุณาเลือกหมวดหมู่');
 
-  updateObjectByKey_(APP.sheets.transactions, 'transactionId', transactionId, {
+  const patch = {
     type: type,
     amount: roundMoney_(amount),
     category: category,
     note: sanitizeText_(payload.note || '', 300),
     date: date,
-  });
+  };
+  if (payload.time) patch.createdAt = composeDateTimeIso_(date, payload.time);
+  updateObjectByKey_(APP.sheets.transactions, 'transactionId', transactionId, patch);
+  ensureCategoryExists_(user.userId, type, category);
 
   return buildAppData_(user.userId);
 }
@@ -369,6 +453,7 @@ function saveBudgetForUser_(userId, payload) {
       updatedAt: now,
     });
   }
+  if (category) ensureCategoryExists_(userId, 'expense', category);
   return buildAppData_(userId);
 }
 
@@ -486,6 +571,7 @@ function saveRecurring(token, payload) {
     row.lastRunAt = '';
     appendObject_(APP.sheets.recurring, row);
   }
+  ensureCategoryExists_(user.userId, type, category);
   return buildAppData_(user.userId);
 }
 
@@ -496,6 +582,196 @@ function deleteRecurring(token, recurringId) {
   });
   if (!recurring) throw new Error('ไม่พบรายการอัตโนมัติ');
   deleteRowByNumber_(APP.sheets.recurring, recurring._rowNumber);
+  return buildAppData_(user.userId);
+}
+
+// ============ หมวดหมู่ (Categories) ============
+// ผู้ใช้ใหม่จะได้ชุดหมวดหมู่เริ่มต้นนี้อัตโนมัติในการเข้าใช้งานครั้งแรก
+const DEFAULT_CATEGORIES = {
+  expense: [
+    { name: 'อาหาร', icon: 'utensils', color: '#c4635a' },
+    { name: 'เดินทาง', icon: 'car', color: '#a97a24' },
+    { name: 'ช้อปปิ้ง', icon: 'shopping-bag', color: '#8a6fb0' },
+    { name: 'ที่อยู่อาศัย', icon: 'home', color: '#3f6b8a' },
+    { name: 'สุขภาพ', icon: 'heart-pulse', color: '#c25a7c' },
+    { name: 'การศึกษา', icon: 'graduation-cap', color: '#2c7a6b' },
+    { name: 'บันเทิง', icon: 'clapperboard', color: '#b0793f' },
+    { name: 'อื่นๆ', icon: 'shapes', color: '#7a7a72' },
+  ],
+  income: [
+    { name: 'เงินเดือน', icon: 'briefcase', color: '#3f6b52' },
+    { name: 'ฟรีแลนซ์', icon: 'laptop', color: '#3f6b8a' },
+    { name: 'ลงทุน', icon: 'trending-up', color: '#2c7a6b' },
+    { name: 'โบนัส', icon: 'gift', color: '#a97a24' },
+    { name: 'ขายของ', icon: 'shopping-bag', color: '#8a6fb0' },
+    { name: 'ของขวัญ', icon: 'heart', color: '#c25a7c' },
+    { name: 'อื่นๆ', icon: 'shapes', color: '#7a7a72' },
+  ],
+};
+const FALLBACK_CATEGORY_ICON = 'tag';
+const FALLBACK_CATEGORY_COLOR = '#7a7a72';
+
+// สร้างหมวดหมู่เริ่มต้นให้ผู้ใช้ที่ยังไม่มีหมวดหมู่ใดๆ เลย (ครั้งแรกที่เข้าใช้งาน)
+function ensureCategoriesSeeded_(userId) {
+  const existing = getSheetData_(APP.sheets.categories).rows.filter(function (row) { return row.userId === userId; });
+  if (existing.length) return;
+  const now = nowIso_();
+  let sortOrder = 0;
+  ['expense', 'income'].forEach(function (type) {
+    DEFAULT_CATEGORIES[type].forEach(function (item) {
+      appendObject_(APP.sheets.categories, {
+        categoryId: makeId_('cat'),
+        userId: userId,
+        type: type,
+        name: item.name,
+        icon: item.icon,
+        color: item.color,
+        sortOrder: sortOrder,
+        createdAt: now,
+        updatedAt: now,
+      });
+      sortOrder += 1;
+    });
+  });
+}
+
+// อ่านหมวดหมู่ของผู้ใช้ แยกตามประเภท เรียงตามลำดับที่ตั้งไว้
+function getCategoriesForUser_(userId) {
+  ensureCategoriesSeeded_(userId);
+  const rows = getSheetData_(APP.sheets.categories).rows
+    .filter(function (row) { return row.userId === userId; })
+    .sort(function (a, b) { return Number(a.sortOrder || 0) - Number(b.sortOrder || 0); });
+
+  const result = { expense: [], income: [] };
+  rows.forEach(function (row) {
+    const type = row.type === 'income' ? 'income' : 'expense';
+    result[type].push({
+      categoryId: row.categoryId,
+      type: type,
+      name: row.name,
+      icon: row.icon || FALLBACK_CATEGORY_ICON,
+      color: row.color || FALLBACK_CATEGORY_COLOR,
+      sortOrder: Number(row.sortOrder || 0),
+    });
+  });
+  return result;
+}
+
+// เรียกทุกครั้งที่มีการบันทึกรายการ/งบ/รายการประจำ ด้วยชื่อหมวดหมู่ใดๆ
+// ถ้าชื่อนั้นยังไม่เคยมีในรายการหมวดหมู่ของผู้ใช้ ให้สร้างให้อัตโนมัติ (กันไม่ให้หมวดที่พิมพ์ผ่าน NLP/OCR หายไปจากลิสต์)
+function ensureCategoryExists_(userId, type, name) {
+  const cleanName = sanitizeText_(name || '', 80);
+  const cleanType = type === 'income' ? 'income' : 'expense';
+  if (!cleanName) return;
+
+  ensureCategoriesSeeded_(userId);
+  const rows = getSheetData_(APP.sheets.categories).rows.filter(function (row) { return row.userId === userId; });
+  const exists = rows.some(function (row) {
+    return row.type === cleanType && String(row.name || '').trim().toLowerCase() === cleanName.toLowerCase();
+  });
+  if (exists) return;
+
+  const orders = rows.map(function (row) { return Number(row.sortOrder); }).filter(function (v) { return !isNaN(v); });
+  const nextOrder = orders.length ? Math.max.apply(null, orders) + 1 : 0;
+  const defaultMatch = (DEFAULT_CATEGORIES[cleanType] || []).find(function (item) { return item.name === cleanName; });
+  const now = nowIso_();
+  appendObject_(APP.sheets.categories, {
+    categoryId: makeId_('cat'),
+    userId: userId,
+    type: cleanType,
+    name: cleanName,
+    icon: defaultMatch ? defaultMatch.icon : FALLBACK_CATEGORY_ICON,
+    color: defaultMatch ? defaultMatch.color : FALLBACK_CATEGORY_COLOR,
+    sortOrder: nextOrder,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+function saveCategory(token, payload) {
+  const user = requireUser_(token);
+  payload = payload || {};
+  const type = payload.type === 'income' ? 'income' : 'expense';
+  const name = sanitizeText_(payload.name || '', 80);
+  const icon = sanitizeText_(payload.icon || FALLBACK_CATEGORY_ICON, 40);
+  const color = /^#[0-9a-fA-F]{6}$/.test(String(payload.color || '')) ? payload.color : FALLBACK_CATEGORY_COLOR;
+  if (!name) throw new Error('กรุณาตั้งชื่อหมวดหมู่');
+
+  ensureCategoriesSeeded_(user.userId);
+  const rows = getSheetData_(APP.sheets.categories).rows.filter(function (row) { return row.userId === user.userId; });
+  const duplicate = rows.find(function (row) {
+    return row.type === type && row.categoryId !== payload.categoryId && String(row.name || '').trim().toLowerCase() === name.toLowerCase();
+  });
+  if (duplicate) throw new Error('มีหมวดหมู่ชื่อนี้อยู่แล้ว');
+
+  const now = nowIso_();
+  if (payload.categoryId) {
+    const existing = rows.find(function (row) { return row.categoryId === payload.categoryId; });
+    if (!existing) throw new Error('ไม่พบหมวดหมู่ที่ต้องการแก้ไข');
+    updateObjectByKey_(APP.sheets.categories, 'categoryId', payload.categoryId, {
+      name: name,
+      icon: icon,
+      color: color,
+      updatedAt: now,
+    });
+  } else {
+    const orders = rows.filter(function (row) { return row.type === type; })
+      .map(function (row) { return Number(row.sortOrder); })
+      .filter(function (v) { return !isNaN(v); });
+    appendObject_(APP.sheets.categories, {
+      categoryId: makeId_('cat'),
+      userId: user.userId,
+      type: type,
+      name: name,
+      icon: icon,
+      color: color,
+      sortOrder: orders.length ? Math.max.apply(null, orders) + 1 : 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  return buildAppData_(user.userId);
+}
+
+function deleteCategory(token, categoryId) {
+  const user = requireUser_(token);
+  const category = getSheetData_(APP.sheets.categories).rows.find(function (row) {
+    return row.categoryId === categoryId && row.userId === user.userId;
+  });
+  if (!category) throw new Error('ไม่พบหมวดหมู่ที่ต้องการลบ');
+  if (category.name === 'อื่นๆ') throw new Error('ไม่สามารถลบหมวดหมู่ "อื่นๆ" ได้ เนื่องจากเป็นหมวดสำรองของระบบ');
+
+  const inUse = getSheetData_(APP.sheets.transactions).rows.some(function (row) {
+    return row.userId === user.userId && row.category === category.name && row.type === category.type;
+  }) || getSheetData_(APP.sheets.budgets).rows.some(function (row) {
+    return row.userId === user.userId && row.category === category.name;
+  }) || getSheetData_(APP.sheets.recurring).rows.some(function (row) {
+    return row.userId === user.userId && row.category === category.name && row.type === category.type;
+  });
+  if (inUse) throw new Error('หมวดหมู่นี้ถูกใช้งานอยู่ กรุณาย้ายรายการ/งบประมาณที่ใช้หมวดนี้ไปหมวดอื่นก่อนลบ');
+
+  deleteRowByNumber_(APP.sheets.categories, category._rowNumber);
+  return buildAppData_(user.userId);
+}
+
+// จัดลำดับหมวดหมู่ใหม่ตามที่ผู้ใช้ลาก/เลื่อน แยกลำดับกันคนละชุดระหว่างรายรับ-รายจ่าย
+function reorderCategories(token, type, orderedIds) {
+  const user = requireUser_(token);
+  const cleanType = type === 'income' ? 'income' : 'expense';
+  if (!Array.isArray(orderedIds)) throw new Error('ลำดับหมวดหมู่ไม่ถูกต้อง');
+
+  const userCategoryIds = getSheetData_(APP.sheets.categories).rows
+    .filter(function (row) { return row.userId === user.userId && row.type === cleanType; })
+    .map(function (row) { return row.categoryId; });
+
+  const finalOrder = orderedIds.filter(function (id) { return userCategoryIds.indexOf(id) >= 0; });
+  userCategoryIds.forEach(function (id) {
+    if (finalOrder.indexOf(id) < 0) finalOrder.push(id);
+  });
+
+  finalOrder.forEach(function (categoryId, index) {
+    updateObjectByKey_(APP.sheets.categories, 'categoryId', categoryId, { sortOrder: index });
+  });
   return buildAppData_(user.userId);
 }
 
@@ -860,6 +1136,7 @@ function buildAppData_(userId) {
   return {
     user: publicUser_(user),
     settings: settings,
+    categories: getCategoriesForUser_(userId),
     transactions: transactions,
     recentTransactions: transactions.slice(0, 5),
     budgets: budgets,
@@ -968,6 +1245,18 @@ function generateBudgetCycles_(period, startDateText) {
 function computeBudgetOverspendStats_(transactions, budget) {
   const allCycles = generateBudgetCycles_(budget.period, budget.startDate);
   const completedCycles = allCycles.slice(0, -1); // ตัดรอบปัจจุบันที่ยังไม่จบออก
+
+  // จำกัดช่วงเวลาที่นำมานับสถิติ "เกินงบ": งบรายวัน/รายสัปดาห์ดูย้อนหลัง 1 เดือน, งบรายเดือนดูย้อนหลัง 1 ปี
+  // กันไม่ให้เอารอบเก่ามากๆ (เช่นปีที่แล้ว) มาปนกับสถานการณ์ปัจจุบัน
+  const windowStart = stripTime_(new Date());
+  if (budget.period === 'monthly') {
+    windowStart.setFullYear(windowStart.getFullYear() - 1);
+  } else {
+    windowStart.setMonth(windowStart.getMonth() - 1);
+  }
+  const windowStartKey = dateKey_(windowStart);
+  const scopedCycles = completedCycles.filter(function (range) { return range.end >= windowStartKey; });
+
   const amount = Number(budget.amount || 0);
 
   let overCount = 0;
@@ -975,7 +1264,7 @@ function computeBudgetOverspendStats_(transactions, budget) {
   let overPercentSum = 0;
   let totalSpent = 0;
 
-  completedCycles.forEach(function (range) {
+  scopedCycles.forEach(function (range) {
     const spent = transactions
       .filter(function (tx) {
         if (tx.type !== 'expense' || tx.date < range.start || tx.date > range.end) return false;
@@ -992,7 +1281,7 @@ function computeBudgetOverspendStats_(transactions, budget) {
     }
   });
 
-  const totalCycles = completedCycles.length;
+  const totalCycles = scopedCycles.length;
   return {
     totalCycles: totalCycles,
     overCount: overCount,
@@ -1269,6 +1558,19 @@ function hashRegistrationPin_(email, pin) {
   return Utilities.base64Encode(raw);
 }
 
+function getPasswordResetPinKey_(email) {
+  return 'resetPin:' + normalizeEmail_(email);
+}
+
+function hashResetPin_(email, pin) {
+  const raw = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    normalizeEmail_(email) + ':password-reset-pin:' + String(pin || '').trim(),
+    Utilities.Charset.UTF_8
+  );
+  return Utilities.base64Encode(raw);
+}
+
 function makeId_(prefix) {
   return prefix + '_' + Utilities.getUuid().replace(/-/g, '');
 }
@@ -1300,6 +1602,14 @@ function normalizeTime_(value) {
   const text = String(value || '20:00').trim();
   const match = text.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   return match ? text : '20:00';
+}
+
+// รวมวันที่ (yyyy-MM-dd) กับเวลา (HH:mm) ที่ผู้ใช้เลือกเอง ให้เป็น ISO timestamp เดียวกับ createdAt
+function composeDateTimeIso_(dateText, timeText) {
+  const date = parseDate_(normalizeDateInput_(dateText));
+  const parts = normalizeTime_(timeText).split(':').map(Number);
+  date.setHours(parts[0], parts[1], 0, 0);
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ssXXX");
 }
 
 function nowIso_() {
