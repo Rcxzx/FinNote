@@ -18,16 +18,8 @@
       expense: ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'ที่อยู่อาศัย', 'สุขภาพ', 'การศึกษา', 'บันเทิง', 'อื่นๆ'],
       income: ['เงินเดือน', 'ฟรีแลนซ์', 'ลงทุน', 'โบนัส', 'ขายของ', 'ของขวัญ', 'อื่นๆ'],
     },
-    periodLabel: {
-      daily: 'รายวัน',
-      weekly: 'รายสัปดาห์',
-      monthly: 'รายเดือน',
-    },
-    frequencyLabel: {
-      daily: 'ทุกวัน',
-      weekly: 'ทุกสัปดาห์',
-      monthly: 'ทุกเดือน',
-    },
+    periodLabel: { daily: 'รายวัน', weekly: 'รายสัปดาห์', monthly: 'รายเดือน' },
+    frequencyLabel: { daily: 'ทุกวัน', weekly: 'ทุกสัปดาห์', monthly: 'ทุกเดือน' },
     savingsSort: 'recent',
     savingsLogFilter: { search: '', goalId: '', direction: '' },
     savingsLogModalGoal: null,
@@ -45,54 +37,20 @@
     '#c4635a', '#a97a24', '#8a6fb0', '#3f6b8a', '#c25a7c', '#2c7a6b',
     '#b0793f', '#7a7a72', '#3f6b52', '#a03f2c',
   ];
-
   const BUDGET_CATEGORY_ICONS = {
-    'อาหาร': 'utensils',
-    'เดินทาง': 'car',
-    'ช้อปปิ้ง': 'shopping-bag',
-    'ที่อยู่อาศัย': 'home',
-    'สุขภาพ': 'heart-pulse',
-    'การศึกษา': 'graduation-cap',
-    'บันเทิง': 'clapperboard',
-    'อื่นๆ': 'shapes',
+    'อาหาร': 'utensils', 'เดินทาง': 'car', 'ช้อปปิ้ง': 'shopping-bag', 'ที่อยู่อาศัย': 'home',
+    'สุขภาพ': 'heart-pulse', 'การศึกษา': 'graduation-cap', 'บันเทิง': 'clapperboard', 'อื่นๆ': 'shapes',
   };
-  function budgetIconFor(category) {
-    if (!category) return 'layout-grid';
-    const match = (App.data && App.data.categories && App.data.categories.expense || []).find((item) => item.name === category);
-    if (match) return match.icon;
-    return BUDGET_CATEGORY_ICONS[category] || 'tag';
-  }
-
-  // สีของหมวดหมู่ (ตั้งไว้ในหน้าจัดการหมวดหมู่) — ใช้แต้มสีให้วงแหวน/ไอคอนของงบประมาณแต่ละใบ
-  // ให้ตรงกับสีของหมวดนั้นๆ แทนที่จะเป็นสีเขียวเดียวกันหมดทุกใบ
-  function categoryColorFor(category) {
-    if (!category) return '';
-    const match = (App.data && App.data.categories && App.data.categories.expense || []).find((item) => item.name === category);
-    return match ? match.color : '';
-  }
-
-  // เป้าหมายออมไม่มีฟิลด์สีของตัวเอง เลยสุ่มสีที่ "คงที่" ให้แต่ละเป้าหมายจากรหัสของมันเอง
-  // (id เดิม = สีเดิมเสมอ ไม่กระพริบเปลี่ยนสีตอน re-render)
-  function colorForSeed(seed) {
-    const str = String(seed || '');
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
-    return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
-  }
-
   const SAVINGS_ICONS = [
     'piggy-bank', 'target', 'home', 'car', 'plane', 'graduation-cap',
     'heart', 'gift', 'laptop', 'smartphone', 'umbrella', 'shield',
     'gem', 'baby', 'book-open', 'camera', 'briefcase', 'sparkles',
   ];
-
   const SAVINGS_QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
-  // คำสำคัญไว้เดาหมวดหมู่จากชื่อรายการที่พิมพ์ผ่าน NLP / Command Line
-  // แต่ละหมวดหมู่ต้องตรงกับชื่อใน App.categories เท่านั้น
   const NLP_CATEGORY_KEYWORDS = {
     expense: {
-      'อาหาร': ['ข้าว', 'น้ำ', 'กิน', 'อาหาร', 'ก๋วยเตี๋ยว', 'ขนม', 'กาแฟ', 'ชา', 'ส้มตำ', 'หมูปิ้ง', 'บุฟเฟ่ต์', 'ร้านอาหาร', 'สุกี้', 'ปิ้งย่าง', 'เครื่องดื่ม', 'ผลไม้', 'นม', 'โจ๊ก', 'ก๋วยจั๊บ', 'ส้ม'],
+      'อาหาร': ['ข้าว', 'น้ำ', 'กิน', 'อาหาร', 'ก๋วยเตี๋ยว', 'ขนม', 'กาแฟ', 'ชา', 'ส้มตำ', 'หมูปิ้ง', 'บุฟเฟ่ต์', 'ร้านอาหาร', 'สุกี้', 'ปิ้งย่าง', 'เครื่องดื่ม', 'ผลไม้', 'นม', 'โจ๊ก'],
       'เดินทาง': ['วิน', 'รถ', 'แท็กซี่', 'taxi', 'bts', 'mrt', 'เครื่องบิน', 'น้ำมัน', 'ทางด่วน', 'ที่จอดรถ', 'ตั๋ว', 'เรือ', 'แกร็บ', 'grab'],
       'ช้อปปิ้ง': ['เสื้อ', 'กางเกง', 'กระเป๋า', 'รองเท้า', 'ช้อป', 'shopping', 'เครื่องสำอาง'],
       'ที่อยู่อาศัย': ['ค่าเช่า', 'ค่าไฟ', 'ค่าน้ำ', 'หอพัก', 'บ้าน', 'ค่าส่วนกลาง', 'เน็ต', 'อินเทอร์เน็ต'],
@@ -110,11 +68,29 @@
     },
   };
 
+  function budgetIconFor(cat) {
+    if (!cat) return 'layout-grid';
+    const m = (App.data && App.data.categories && App.data.categories.expense || []).find((i) => i.name === cat);
+    return m ? m.icon : (BUDGET_CATEGORY_ICONS[cat] || 'tag');
+  }
+
+  function categoryColorFor(cat) {
+    if (!cat) return '';
+    const m = (App.data && App.data.categories && App.data.categories.expense || []).find((i) => i.name === cat);
+    return m ? m.color : '';
+  }
+
+  function colorForSeed(seed) {
+    let hash = 0;
+    const str = String(seed || '');
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
+  }
+
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
     setTodayLabel();
-    loadCustomCategories();
     applyTheme(document.documentElement.classList.contains('dark'));
     watchSystemTheme();
     bindGlobalEvents();
@@ -133,9 +109,7 @@
   }
 
   function bindGlobalEvents() {
-    document.getElementById('undoToastBtn').addEventListener('click', () => {
-      if (activeUndo_) activeUndo_.cancel();
-    });
+    document.getElementById('undoToastBtn').addEventListener('click', () => { if (activeUndo_) activeUndo_.cancel(); });
     document.getElementById('authModeToggle').addEventListener('click', toggleAuthMode);
     document.getElementById('authForm').addEventListener('submit', submitAuth);
     document.getElementById('forgotPasswordLink').addEventListener('click', () => setAuthMode('forgot'));
@@ -144,60 +118,60 @@
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('fabAddBtn').addEventListener('click', openEntryMethodModal);
     document.getElementById('entryMethodClose').addEventListener('click', closeEntryMethodModal);
-    document.getElementById('entryMethodModal').addEventListener('click', (event) => {
-      if (event.target.id === 'entryMethodModal') closeEntryMethodModal();
-    });
-    document.querySelectorAll('[data-entry-method]').forEach((button) => {
-      button.addEventListener('click', () => chooseEntryMethod(button.dataset.entryMethod));
+    document.getElementById('entryMethodModal').addEventListener('click', (e) => { if (e.target.id === 'entryMethodModal') closeEntryMethodModal(); });
+    document.querySelectorAll('[data-entry-method]').forEach((btn) => {
+      btn.addEventListener('click', () => chooseEntryMethod(btn.dataset.entryMethod));
     });
     document.getElementById('transactionModalClose').addEventListener('click', closeTransactionModal);
-    document.getElementById('transactionModal').addEventListener('click', (event) => {
-      if (event.target.id === 'transactionModal') closeTransactionModal();
-    });
+    document.getElementById('transactionModal').addEventListener('click', (e) => { if (e.target.id === 'transactionModal') closeTransactionModal(); });
     document.getElementById('nlpModalClose').addEventListener('click', closeNlpModal);
-    document.getElementById('nlpModal').addEventListener('click', (event) => {
-      if (event.target.id === 'nlpModal') closeNlpModal();
-    });
+    document.getElementById('nlpModal').addEventListener('click', (e) => { if (e.target.id === 'nlpModal') closeNlpModal(); });
     document.getElementById('nlpForm').addEventListener('submit', submitNlpTransaction);
     document.getElementById('nlpInput').addEventListener('input', renderNlpPreview);
     document.getElementById('nlpVoiceBtn').addEventListener('click', startNlpVoiceInput);
     document.getElementById('nlpConfirmModalClose').addEventListener('click', closeNlpConfirmModal);
-    document.getElementById('nlpConfirmModal').addEventListener('click', (event) => {
-      if (event.target.id === 'nlpConfirmModal') closeNlpConfirmModal();
-    });
+    document.getElementById('nlpConfirmModal').addEventListener('click', (e) => { if (e.target.id === 'nlpConfirmModal') closeNlpConfirmModal(); });
     document.getElementById('nlpConfirmSaveBtn').addEventListener('click', confirmNlpSave);
     document.getElementById('ocrModalClose').addEventListener('click', closeOcrModal);
-    document.getElementById('ocrModal').addEventListener('click', (event) => {
-      if (event.target.id === 'ocrModal') closeOcrModal();
+    document.getElementById('ocrModal').addEventListener('click', (e) => { if (e.target.id === 'ocrModal') closeOcrModal(); });
+    document.getElementById('ocrFileInput').addEventListener('change', (e) => handleOcrFiles(e.target.files));
+    document.getElementById('ocrDropZone').addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.classList.add('dragover'); });
+    document.getElementById('ocrDropZone').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('dragover'));
+    document.getElementById('ocrDropZone').addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.currentTarget.classList.remove('dragover');
+      handleOcrFiles(e.dataTransfer.files);
     });
-    document.getElementById('ocrFileInput').addEventListener('change', (event) => handleOcrFiles(event.target.files));
-    document.getElementById('ocrDropZone').addEventListener('dragover', handleOcrDragOver);
-    document.getElementById('ocrDropZone').addEventListener('dragleave', handleOcrDragLeave);
-    document.getElementById('ocrDropZone').addEventListener('drop', handleOcrDrop);
     document.getElementById('ocrSaveAllBtn').addEventListener('click', saveOcrTransactions);
-    document.querySelectorAll('[data-open-transaction]').forEach((button) => {
-      button.addEventListener('click', openEntryMethodModal);
+    document.getElementById('budgetFormOpenBtn')?.addEventListener('click', () => openBudgetFormModal());
+    document.getElementById('budgetFormModalClose')?.addEventListener('click', closeBudgetFormModal);
+    document.getElementById('budgetFormModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'budgetFormModal') closeBudgetFormModal();
     });
     document.getElementById('budgetForm').addEventListener('submit', submitBudget);
-    document.getElementById('budgetCancelEdit').addEventListener('click', resetBudgetForm);
-    document.querySelectorAll('[data-budget-scope]').forEach((button) => {
-      button.addEventListener('click', () => setBudgetScope(button.dataset.budgetScope));
+    document.getElementById('budgetCancelEdit').addEventListener('click', closeBudgetFormModal);
+    document.querySelectorAll('[data-budget-scope]').forEach((btn) => {
+      btn.addEventListener('click', () => setBudgetScope(btn.dataset.budgetScope));
     });
     document.getElementById('budgetHeroEditBtn').addEventListener('click', () => {
-      const primary = (App.data.budgets || [])[0];
-      if (primary) startEditBudget(primary);
+      const primary = App.data.budget || (App.data.budgets || [])[0];
+      if (primary && primary.budgetId) openBudgetFormModal(primary);
     });
     document.getElementById('budgetOverFilterToggle').addEventListener('click', () => {
+      App.budgetShowOverOnly = !App.budgetShowOverOnly;
+      renderBudgets();
+    });
+    document.getElementById('budgetOverviewOverChip')?.addEventListener('click', () => {
       App.budgetShowOverOnly = !App.budgetShowOverOnly;
       renderBudgets();
     });
     populateBudgetCategoryOptions();
     document.getElementById('recurringForm').addEventListener('submit', submitRecurring);
     document.getElementById('recurringNextDelete').addEventListener('click', deleteNextRecurring);
-    document.querySelectorAll('[data-category-type]').forEach((button) => {
-      button.addEventListener('click', () => {
-        App.categoryManagerType = button.dataset.categoryType;
-        document.querySelectorAll('[data-category-type]').forEach((item) => item.classList.toggle('active', item === button));
+    document.querySelectorAll('[data-category-type]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        App.categoryManagerType = btn.dataset.categoryType;
+        document.querySelectorAll('[data-category-type]').forEach((item) => item.classList.toggle('active', item === btn));
         renderCategoryManager();
       });
     });
@@ -207,34 +181,30 @@
     document.getElementById('exportSavingsBtn').addEventListener('click', exportSavingsCsv);
     document.getElementById('savingsGoalFormOpenBtn').addEventListener('click', () => openSavingsGoalFormModal());
     document.getElementById('savingsGoalFormModalClose').addEventListener('click', closeSavingsGoalFormModal);
-    document.getElementById('savingsGoalFormModal').addEventListener('click', (event) => {
-      if (event.target.id === 'savingsGoalFormModal') closeSavingsGoalFormModal();
-    });
+    document.getElementById('savingsGoalFormModal').addEventListener('click', (e) => { if (e.target.id === 'savingsGoalFormModal') closeSavingsGoalFormModal(); });
     document.getElementById('savingsGoalForm').addEventListener('submit', submitSavingsGoal);
     document.getElementById('savingsGoalCancelEdit').addEventListener('click', closeSavingsGoalFormModal);
     document.getElementById('savingsLogModalClose').addEventListener('click', closeSavingsLogModal);
-    document.getElementById('savingsLogModal').addEventListener('click', (event) => {
-      if (event.target.id === 'savingsLogModal') closeSavingsLogModal();
-    });
+    document.getElementById('savingsLogModal').addEventListener('click', (e) => { if (e.target.id === 'savingsLogModal') closeSavingsLogModal(); });
     document.getElementById('savingsLogForm').addEventListener('submit', submitSavingsLog);
-    document.querySelectorAll('[data-savings-direction]').forEach((button) => {
-      button.addEventListener('click', () => setSavingsDirection(button.dataset.savingsDirection));
+    document.querySelectorAll('[data-savings-direction]').forEach((btn) => {
+      btn.addEventListener('click', () => setSavingsDirection(btn.dataset.savingsDirection));
     });
-    document.getElementById('savingsSortSelect').addEventListener('change', (event) => {
-      App.savingsSort = event.target.value;
+    document.getElementById('savingsSortSelect').addEventListener('change', (e) => {
+      App.savingsSort = e.target.value;
       renderSavings();
     });
-    document.getElementById('savingsLogSearch').addEventListener('input', (event) => {
-      App.savingsLogFilter.search = event.target.value.trim().toLowerCase();
+    document.getElementById('savingsLogSearch').addEventListener('input', (e) => {
+      App.savingsLogFilter.search = e.target.value.trim().toLowerCase();
       renderSavings();
     });
-    document.getElementById('savingsLogGoalFilter').addEventListener('change', (event) => {
-      App.savingsLogFilter.goalId = event.target.value;
+    document.getElementById('savingsLogGoalFilter').addEventListener('change', (e) => {
+      App.savingsLogFilter.goalId = e.target.value;
       renderSavings();
     });
-    document.querySelectorAll('[data-log-direction-filter]').forEach((button) => {
-      button.addEventListener('click', () => {
-        App.savingsLogFilter.direction = button.dataset.logDirectionFilter;
+    document.querySelectorAll('[data-log-direction-filter]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        App.savingsLogFilter.direction = btn.dataset.logDirectionFilter;
         document.querySelectorAll('[data-log-direction-filter]').forEach((item) => {
           item.classList.toggle('active', item.dataset.logDirectionFilter === App.savingsLogFilter.direction);
         });
@@ -246,26 +216,25 @@
     document.getElementById('deleteAccountForm').addEventListener('submit', submitDeleteAccount);
     document.getElementById('profileImageInput').addEventListener('change', readProfileImage);
     document.getElementById('transactionSearch').addEventListener('input', renderTransactions);
-    document.querySelectorAll('[data-history-group]').forEach((button) => {
-      button.addEventListener('click', () => setHistoryGroup(button.dataset.historyGroup));
+    document.querySelectorAll('[data-history-group]').forEach((btn) => {
+      btn.addEventListener('click', () => setHistoryGroup(btn.dataset.historyGroup));
     });
-
-    document.querySelectorAll('[data-view]').forEach((button) => {
-      button.addEventListener('click', () => setView(button.dataset.view));
+    document.querySelectorAll('[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => setView(btn.dataset.view));
     });
-    document.querySelectorAll('[data-view-link]').forEach((button) => {
-      button.addEventListener('click', () => setView(button.dataset.viewLink));
+    document.querySelectorAll('[data-view-link]').forEach((btn) => {
+      btn.addEventListener('click', () => setView(btn.dataset.viewLink));
     });
-    document.querySelectorAll('[data-settings-tab]').forEach((button) => {
-      button.addEventListener('click', () => {
-        document.querySelectorAll('[data-settings-tab]').forEach((item) => item.classList.toggle('active', item === button));
-        document.querySelectorAll('.idx-pane').forEach((pane) => {
-          pane.classList.toggle('hidden', pane.id !== 'settingsPane-' + button.dataset.settingsTab);
+    document.querySelectorAll('[data-settings-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-settings-tab]').forEach((i) => i.classList.toggle('active', i === btn));
+        document.querySelectorAll('.idx-pane').forEach((p) => {
+          p.classList.toggle('hidden', p.id !== 'settingsPane-' + btn.dataset.settingsTab);
         });
       });
     });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeAllEntryModals();
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllEntryModals();
     });
   }
 
@@ -275,30 +244,16 @@
         reject(new Error('ต้องเปิดผ่าน Google Apps Script Web App'));
         return;
       }
-      google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(reject)[name](...args);
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);
     });
   }
 
-  function isSessionExpiredError_(error) {
-    return Boolean(error) && String(error.message || '').indexOf('เซสชันหมดอายุ') !== -1;
-  }
-
-  const AUTH_ENTRY_CALLS = ['resumeSession', 'loginUser', 'registerUser', 'verifyEmailPin', 'requestPasswordReset', 'resetPasswordWithPin'];
-
   let sessionResumePromise_ = null;
-
   function resumeSessionOnce_() {
     if (!sessionResumePromise_) {
       sessionResumePromise_ = callApi_('resumeSession', App.rememberToken)
-        .then((result) => {
-          applySessionResult(result);
-          return result;
-        })
-        .finally(() => {
-          sessionResumePromise_ = null;
-        });
+        .then((res) => { applySessionResult(res); return res; })
+        .finally(() => { sessionResumePromise_ = null; });
     }
     return sessionResumePromise_;
   }
@@ -306,24 +261,22 @@
   async function api(name, ...args) {
     try {
       return await callApi_(name, ...args);
-    } catch (error) {
-      const canRecover = !AUTH_ENTRY_CALLS.includes(name) && isSessionExpiredError_(error) && App.rememberToken;
-      if (!canRecover) throw error;
-
-      const staleToken = args[0];
-      try {
-        await resumeSessionOnce_();
-      } catch (resumeError) {
-        localStorage.removeItem('moneyflow_remember');
-        App.rememberToken = '';
-        App.token = '';
-        sessionStorage.removeItem('moneyflow_session');
-        showAuth();
-        throw error;
+    } catch (err) {
+      const isExpired = err && String(err.message || '').includes('เซสชันหมดอายุ');
+      if (isExpired && App.rememberToken && name !== 'resumeSession' && name !== 'loginUser') {
+        try {
+          await resumeSessionOnce_();
+          const retryArgs = args.map((a) => (a === args[0] ? App.token : a));
+          return callApi_(name, ...retryArgs);
+        } catch {
+          localStorage.removeItem('moneyflow_remember');
+          App.rememberToken = '';
+          App.token = '';
+          showAuth();
+          throw err;
+        }
       }
-
-      const retryArgs = args.map((arg) => (arg === staleToken ? App.token : arg));
-      return callApi_(name, ...retryArgs);
+      throw err;
     }
   }
 
@@ -333,7 +286,7 @@
       App.data = await api('getAppData', App.token);
       showApp();
       renderAll();
-    } catch (error) {
+    } catch (err) {
       sessionStorage.removeItem('moneyflow_session');
       App.token = '';
       if (App.rememberToken) {
@@ -342,7 +295,7 @@
         return;
       }
       showAuth();
-      showToast(error.message || 'เซสชันหมดอายุ', true);
+      showToast(err.message || 'เซสชันหมดอายุ', true);
     } finally {
       setLoading(false);
     }
@@ -352,7 +305,7 @@
     setLoading(true);
     try {
       await resumeSessionOnce_();
-    } catch (error) {
+    } catch {
       localStorage.removeItem('moneyflow_remember');
       App.rememberToken = '';
       showAuth();
@@ -374,15 +327,14 @@
   }
 
   let silentRefreshBusy_ = false;
-
   async function silentRefresh() {
     if (!App.token || !App.data || silentRefreshBusy_) return;
     silentRefreshBusy_ = true;
     try {
       App.data = await api('getAppData', App.token);
       renderAll();
-    } catch (error) {
-      console.warn(error);
+    } catch (err) {
+      console.warn(err);
     } finally {
       silentRefreshBusy_ = false;
     }
@@ -410,32 +362,25 @@
   }
 
   function refreshAuthFormUI() {
-    const mode = App.authMode;
-    const isRegister = mode === 'register';
-    const isForgot = mode === 'forgot';
-    const isForgotReset = isForgot && App.forgotStep === 'reset';
+    const isReg = App.authMode === 'register';
+    const isForg = App.authMode === 'forgot';
+    const isReset = isForg && App.forgotStep === 'reset';
 
-    document.getElementById('displayNameWrap').classList.toggle('hidden', !isRegister);
-    document.getElementById('passwordWrap').classList.toggle('hidden', isForgot);
-    document.getElementById('pinWrap').classList.toggle('hidden', !(isRegister && App.pendingEmailVerification));
-    document.getElementById('emailPin').value = '';
-    document.getElementById('forgotPinWrap').classList.toggle('hidden', !isForgotReset);
-    document.getElementById('forgotNewPasswordWrap').classList.toggle('hidden', !isForgotReset);
-    document.getElementById('authModeToggle').classList.toggle('hidden', isForgot);
-    document.getElementById('backToLoginBtn').classList.toggle('hidden', !isForgot);
+    document.getElementById('displayNameWrap').classList.toggle('hidden', !isReg);
+    document.getElementById('passwordWrap').classList.toggle('hidden', isForg);
+    document.getElementById('pinWrap').classList.toggle('hidden', !(isReg && App.pendingEmailVerification));
+    document.getElementById('forgotPinWrap').classList.toggle('hidden', !isReset);
+    document.getElementById('forgotNewPasswordWrap').classList.toggle('hidden', !isReset);
+    document.getElementById('authModeToggle').classList.toggle('hidden', isForg);
+    document.getElementById('backToLoginBtn').classList.toggle('hidden', !isForg);
 
-    let submitLabel = '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>';
-    if (isRegister) submitLabel = '<i data-lucide="user-plus"></i><span>สมัครสมาชิก</span>';
-    if (isForgot) {
-      submitLabel = isForgotReset
-        ? '<i data-lucide="key-round"></i><span>ตั้งรหัสผ่านใหม่</span>'
-        : '<i data-lucide="mail"></i><span>ส่ง PIN ไปทางอีเมล</span>';
+    let label = '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>';
+    if (isReg) label = '<i data-lucide="user-plus"></i><span>สมัครสมาชิก</span>';
+    if (isForg) {
+      label = isReset ? '<i data-lucide="key-round"></i><span>ตั้งรหัสผ่านใหม่</span>' : '<i data-lucide="mail"></i><span>ส่ง PIN ไปทางอีเมล</span>';
     }
-    document.getElementById('authSubmit').innerHTML = submitLabel;
-
-    document.getElementById('authModeToggle').innerHTML = isRegister
-      ? '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>'
-      : '<i data-lucide="user-plus"></i><span>สมัคร</span>';
+    document.getElementById('authSubmit').innerHTML = label;
+    document.getElementById('authModeToggle').innerHTML = isReg ? '<i data-lucide="log-in"></i><span>เข้าสู่ระบบ</span>' : '<i data-lucide="user-plus"></i><span>สมัคร</span>';
     renderIcons();
   }
 
@@ -443,13 +388,14 @@
     setAuthMode(App.authMode === 'login' ? 'register' : 'login');
   }
 
-  async function submitAuth(event) {
-    event.preventDefault();
+  async function submitAuth(e) {
+    e.preventDefault();
     if (App.authMode === 'forgot') {
       await submitForgotPassword();
       return;
     }
-    if (App.authMode === 'register' && App.pendingEmailVerification && !document.getElementById('emailPin').value.trim()) {
+    const pinVal = document.getElementById('emailPin').value.trim();
+    if (App.authMode === 'register' && App.pendingEmailVerification && !pinVal) {
       showToast('กรุณากรอก PIN ที่ได้รับทางอีเมล', true);
       document.getElementById('emailPin').focus();
       return;
@@ -458,7 +404,7 @@
       email: document.getElementById('email').value,
       password: document.getElementById('password').value,
       displayName: document.getElementById('displayName').value,
-      pin: App.pendingEmailVerification ? document.getElementById('emailPin').value : '',
+      pin: App.pendingEmailVerification ? pinVal : '',
     };
     setLoading(true);
     try {
@@ -474,8 +420,8 @@
       }
       App.pendingEmailVerification = false;
       applySessionResult(result);
-    } catch (error) {
-      showToast(error.message || 'ไม่สามารถเข้าสู่ระบบได้', true);
+    } catch (err) {
+      showToast(err.message || 'ไม่สามารถเข้าสู่ระบบได้', true);
     } finally {
       setLoading(false);
     }
@@ -485,7 +431,6 @@
     const email = document.getElementById('email').value.trim();
     if (!email) {
       showToast('กรุณากรอกอีเมล', true);
-      document.getElementById('email').focus();
       return;
     }
     setLoading(true);
@@ -508,8 +453,8 @@
         setAuthMode('login');
         applySessionResult(result);
       }
-    } catch (error) {
-      showToast(error.message || 'ดำเนินการไม่สำเร็จ', true);
+    } catch (err) {
+      showToast(err.message || 'ดำเนินการไม่สำเร็จ', true);
     } finally {
       setLoading(false);
     }
@@ -519,8 +464,8 @@
     setLoading(true);
     try {
       if (App.token) await api('logoutUser', App.token);
-    } catch (error) {
-      console.warn(error);
+    } catch (err) {
+      console.warn(err);
     } finally {
       sessionStorage.removeItem('moneyflow_session');
       localStorage.removeItem('moneyflow_remember');
@@ -535,6 +480,7 @@
   function renderAll() {
     if (!App.data) return;
     syncCategoriesFromData();
+    populateBudgetCategoryOptions();
     renderProfile();
     renderDashboard();
     renderTransactions();
@@ -547,31 +493,22 @@
     renderIcons();
   }
 
-  // อัปเดตลิสต์ชื่อหมวดหมู่ (สำหรับ dropdown ต่างๆ) ให้ตรงกับข้อมูลล่าสุดจากเซิร์ฟเวอร์เสมอ
   function syncCategoriesFromData() {
-    const categories = App.data.categories || { expense: [], income: [] };
-    App.categories.expense = categories.expense.map((item) => item.name);
-    App.categories.income = categories.income.map((item) => item.name);
+    const cats = App.data.categories || { expense: [], income: [] };
+    App.categories.expense = cats.expense.map((i) => i.name);
+    App.categories.income = cats.income.map((i) => i.name);
   }
 
   function setView(view) {
     App.view = view;
     const titles = {
-      dashboard: 'แดชบอร์ด',
-      transactions: 'ประวัติรายการ',
-      budget: 'งบประมาณ',
-      savings: 'เงินออม',
-      recurring: 'รายการประจำ',
-      analytics: 'สถิติ',
-      settings: 'ตั้งค่า',
+      dashboard: 'แดชบอร์ด', transactions: 'ประวัติรายการ', budget: 'งบประมาณ',
+      savings: 'เงินออม', recurring: 'รายการประจำ', analytics: 'สถิติ', settings: 'ตั้งค่า',
     };
-
-    document.querySelectorAll('.view-section').forEach((section) => section.classList.add('hidden'));
+    document.querySelectorAll('.view-section').forEach((s) => s.classList.add('hidden'));
     document.getElementById(view + 'View').classList.remove('hidden');
     document.getElementById('viewTitle').textContent = titles[view] || 'FinNote';
-    document.querySelectorAll('.nav-item, .mobile-nav-item').forEach((item) => {
-      item.classList.toggle('active', item.dataset.view === view);
-    });
+    document.querySelectorAll('.nav-item, .mobile-nav-item').forEach((i) => i.classList.toggle('active', i.dataset.view === view));
     document.getElementById('profileChipBtn').classList.toggle('active', view === 'settings');
     if (view === 'analytics') setTimeout(renderAnalytics, 60);
     renderIcons();
@@ -579,9 +516,7 @@
 
   function toggleTheme() {
     const isDark = !document.documentElement.classList.contains('dark');
-    try {
-      localStorage.setItem('moneyflow-theme', isDark ? 'dark' : 'light');
-    } catch (e) {}
+    try { localStorage.setItem('moneyflow-theme', isDark ? 'dark' : 'light'); } catch {}
     applyTheme(isDark);
     if (App.data) {
       renderDashboard();
@@ -598,24 +533,21 @@
 
   function watchSystemTheme() {
     if (!window.matchMedia) return;
-    var query = window.matchMedia('(prefers-color-scheme: dark)');
-    var handler = function (e) {
-      var stored;
-      try { stored = localStorage.getItem('moneyflow-theme'); } catch (err) { stored = null; }
-      if (stored !== 'dark' && stored !== 'light') applyTheme(e.matches);
-    };
-    if (query.addEventListener) query.addEventListener('change', handler);
-    else if (query.addListener) query.addListener(handler);
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    query.addEventListener?.('change', (e) => {
+      const stored = localStorage.getItem('moneyflow-theme');
+      if (!stored) applyTheme(e.matches);
+    });
   }
 
   function renderProfile() {
-    const user = App.data.user;
-    const avatar = user.profileImage || avatarDataUrl(user.displayName || user.email);
+    const u = App.data.user;
+    const avatar = u.profileImage || avatarDataUrl(u.displayName || u.email);
     document.getElementById('profileAvatar').src = avatar;
     document.getElementById('settingsAvatar').src = avatar;
-    document.getElementById('profileName').textContent = user.displayName;
-    document.getElementById('profileEmail').textContent = user.email;
-    document.getElementById('settingsDisplayName').value = user.displayName;
+    document.getElementById('profileName').textContent = u.displayName;
+    document.getElementById('profileEmail').textContent = u.email;
+    document.getElementById('settingsDisplayName').value = u.displayName;
   }
 
   function renderDashboard() {
@@ -627,52 +559,41 @@
     const trendEl = document.getElementById('monthTrend');
     if (trendEl) {
       const change = monthly.expenseChangePercent;
-      const isUp = change > 0;
-      const isDown = change < 0;
-      trendEl.textContent = `${isUp ? '▲' : isDown ? '▼' : '•'} รายจ่าย ${Math.abs(change)}% จากช่วงก่อน`;
-      trendEl.classList.toggle('is-up', isUp);
-      trendEl.classList.toggle('is-down', isDown);
+      trendEl.textContent = `${change > 0 ? '▲' : change < 0 ? '▼' : '•'} รายจ่าย ${Math.abs(change)}% จากช่วงก่อน`;
+      trendEl.classList.toggle('is-up', change > 0);
+      trendEl.classList.toggle('is-down', change < 0);
     }
 
-    const todayCount = (App.data.transactions || []).filter((tx) => tx.date === today()).length;
-    document.getElementById('todayCount').textContent = todayCount;
+    document.getElementById('todayCount').textContent = (App.data.transactions || []).filter((t) => t.date === today()).length;
 
-    const budget = App.data.budget;
-    document.getElementById('budgetPeriodPill').textContent = App.periodLabel[budget.period] || 'รายเดือน';
-    document.getElementById('budgetSpent').textContent = money(budget.spent);
-    document.getElementById('budgetRemaining').textContent = 'คงเหลือ ' + money(Math.max(0, budget.remaining));
-    document.getElementById('budgetPercent').textContent = budget.amount
-      ? `${Math.round(budget.ratio * 100)}% ของวงเงิน ${money(budget.amount)}`
-      : 'ยังไม่ได้ตั้งงบประมาณ';
+    const b = App.data.budget;
+    document.getElementById('budgetPeriodPill').textContent = App.periodLabel[b.period] || 'รายเดือน';
+    document.getElementById('budgetSpent').textContent = money(b.spent);
+    document.getElementById('budgetRemaining').textContent = 'คงเหลือ ' + money(Math.max(0, b.remaining));
+    document.getElementById('budgetPercent').textContent = b.amount ? `${Math.round(b.ratio * 100)}% ของวงเงิน ${money(b.amount)}` : 'ยังไม่ได้ตั้งงบประมาณ';
 
     const bar = document.getElementById('budgetBar');
-    bar.style.width = `${Math.min(100, Math.round(budget.ratio * 100))}%`;
-    bar.classList.toggle('warning', budget.ratio >= 0.8 && budget.ratio <= 1);
-    bar.classList.toggle('danger', budget.ratio > 1);
+    bar.style.width = `${Math.min(100, Math.round(b.ratio * 100))}%`;
+    bar.classList.toggle('warning', b.ratio >= 0.8 && b.ratio <= 1);
+    bar.classList.toggle('danger', b.ratio > 1);
 
     const streak = App.data.streak;
     document.getElementById('streakDays').textContent = streak.days;
-    document.getElementById('streakText').textContent = streak.days
-      ? `${streak.days} วันติดกัน${streak.hasLoggedToday ? '' : ' · วันนี้ยังไม่ได้บันทึก'}`
-      : 'เริ่มบันทึกวันนี้';
+    document.getElementById('streakText').textContent = streak.days ? `${streak.days} วันติดกัน${streak.hasLoggedToday ? '' : ' · วันนี้ยังไม่ได้บันทึก'}` : 'เริ่มบันทึกวันนี้';
 
-    const recentList = document.getElementById('dashRecentList');
     const recent = [...(App.data.transactions || [])]
-      .sort((a, b) => String(b.date + b.createdAt).localeCompare(String(a.date + a.createdAt)))
+      .sort((x, y) => String(y.date + y.createdAt).localeCompare(String(x.date + x.createdAt)))
       .slice(0, 3);
-    recentList.innerHTML = recent.length
-      ? recent.map(transactionRowHtml).join('')
-      : emptyHtml('ยังไม่มีรายการ');
+    const recentList = document.getElementById('dashRecentList');
+    recentList.innerHTML = recent.length ? recent.map(transactionRowHtml).join('') : emptyHtml('ยังไม่มีรายการ');
     bindTransactionDelete(recentList);
 
-    const topCategory = (App.data.analytics.categoryExpense || [])[0];
-    const topCatAmtEl = document.getElementById('dashTopCategoryAmt');
-    const topCatNameEl = document.getElementById('dashTopCategoryName');
-    if (topCatAmtEl && topCatNameEl) {
-      topCatAmtEl.textContent = topCategory ? money(topCategory.amount) : '฿0';
-      topCatNameEl.innerHTML = topCategory
-        ? `<span style="display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:${App_categoryPalette[0]};margin-right:.35rem;vertical-align:middle;"></span>${escapeHtml(topCategory.category)}`
-        : 'ยังไม่มีข้อมูล';
+    const topCat = (App.data.analytics.categoryExpense || [])[0];
+    const topCatAmt = document.getElementById('dashTopCategoryAmt');
+    const topCatName = document.getElementById('dashTopCategoryName');
+    if (topCatAmt && topCatName) {
+      topCatAmt.textContent = topCat ? money(topCat.amount) : '฿0';
+      topCatName.textContent = topCat ? topCat.category : 'ยังไม่มีข้อมูล';
     }
   }
 
@@ -713,36 +634,28 @@
     document.getElementById(prefix + 'Time').value = currentTime();
     updateCategoryOptions(prefix, 'expense');
 
-    form.querySelectorAll('[data-type]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const type = button.dataset.type;
-        form.querySelectorAll('[data-type]').forEach((item) => item.classList.toggle('active', item === button));
-        document.getElementById(prefix + 'Type').value = type;
-        updateCategoryOptions(prefix, type);
+    form.querySelectorAll('[data-type]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        form.querySelectorAll('[data-type]').forEach((i) => i.classList.toggle('active', i === btn));
+        document.getElementById(prefix + 'Type').value = btn.dataset.type;
+        updateCategoryOptions(prefix, btn.dataset.type);
       });
     });
-    form.addEventListener('submit', (event) => submitTransaction(event, prefix));
+    form.addEventListener('submit', (e) => submitTransaction(e, prefix));
   }
 
-  function trackModalOpen(modalId, focusSelector) {
+  function trackModalOpen(id, sel) {
     App.lastFocusedEl = document.activeElement;
     App.modalOpenCount += 1;
     document.body.classList.add('modal-open');
-    if (focusSelector) {
-      setTimeout(() => {
-        const target = document.querySelector(focusSelector);
-        if (target) target.focus();
-      }, 80);
-    }
+    if (sel) setTimeout(() => document.querySelector(sel)?.focus(), 80);
   }
 
   function trackModalClose() {
     App.modalOpenCount = Math.max(0, App.modalOpenCount - 1);
     if (App.modalOpenCount === 0) {
       document.body.classList.remove('modal-open');
-      if (App.lastFocusedEl && typeof App.lastFocusedEl.focus === 'function') {
-        App.lastFocusedEl.focus();
-      }
+      App.lastFocusedEl?.focus?.();
       App.lastFocusedEl = null;
     }
   }
@@ -754,9 +667,9 @@
   }
 
   function closeEntryMethodModal() {
-    const modal = document.getElementById('entryMethodModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    const m = document.getElementById('entryMethodModal');
+    if (!m || m.classList.contains('hidden')) return;
+    m.classList.add('hidden');
     trackModalClose();
   }
 
@@ -774,34 +687,28 @@
     closeOcrModal();
   }
 
-  function openTransactionModal(transaction) {
-    App.editingTransactionId = transaction ? transaction.transactionId : '';
+  function openTransactionModal(tx) {
+    App.editingTransactionId = tx ? tx.transactionId : '';
     const prefix = 'modal';
-    const type = transaction ? transaction.type : 'expense';
-    document.getElementById('transactionModalTitle').textContent = transaction ? 'แก้ไขรายการ' : 'บันทึกรายรับ-รายจ่าย';
+    const type = tx ? tx.type : 'expense';
+    document.getElementById('transactionModalTitle').textContent = tx ? 'แก้ไขรายการ' : 'บันทึกรายรับ-รายจ่าย';
     document.getElementById(prefix + 'Type').value = type;
-    document.querySelectorAll('#transactionModal [data-type]').forEach((button) => {
-      button.classList.toggle('active', button.dataset.type === type);
-    });
-    updateCategoryOptions(prefix, type, transaction ? transaction.category : '');
-    document.getElementById(prefix + 'Amount').value = transaction ? transaction.amount : '';
-    document.getElementById(prefix + 'Note').value = transaction ? (transaction.note || '') : '';
-    document.getElementById(prefix + 'Date').value = transaction ? transaction.date : today();
-    document.getElementById(prefix + 'Time').value = transaction && timeDisplay(transaction.createdAt)
-      ? timeDisplay(transaction.createdAt)
-      : currentTime();
-    document.getElementById(prefix + 'Submit').innerHTML = transaction
-      ? '<i data-lucide="save"></i><span>บันทึกการแก้ไข</span>'
-      : '<i data-lucide="save"></i><span>บันทึกทันที</span>';
+    document.querySelectorAll('#transactionModal [data-type]').forEach((b) => b.classList.toggle('active', b.dataset.type === type));
+    updateCategoryOptions(prefix, type, tx ? tx.category : '');
+    document.getElementById(prefix + 'Amount').value = tx ? tx.amount : '';
+    document.getElementById(prefix + 'Note').value = tx ? (tx.note || '') : '';
+    document.getElementById(prefix + 'Date').value = tx ? tx.date : today();
+    document.getElementById(prefix + 'Time').value = tx && timeDisplay(tx.createdAt) ? timeDisplay(tx.createdAt) : currentTime();
+    document.getElementById(prefix + 'Submit').innerHTML = `<i data-lucide="save"></i><span>${tx ? 'บันทึกการแก้ไข' : 'บันทึกทันที'}</span>`;
     document.getElementById('transactionModal').classList.remove('hidden');
     trackModalOpen('transactionModal', '#' + prefix + 'Amount');
     renderIcons();
   }
 
   function closeTransactionModal() {
-    const modal = document.getElementById('transactionModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    const m = document.getElementById('transactionModal');
+    if (!m || m.classList.contains('hidden')) return;
+    m.classList.add('hidden');
     trackModalClose();
     App.editingTransactionId = '';
   }
@@ -810,12 +717,12 @@
     const select = document.getElementById(prefix + 'Category');
     const categories = App.categories[type].slice();
     if (selected && !categories.includes(selected)) categories.push(selected);
-    select.innerHTML = categories.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+    select.innerHTML = categories.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     if (selected) select.value = selected;
   }
 
-  async function submitTransaction(event, prefix) {
-    event.preventDefault();
+  async function submitTransaction(e, prefix) {
+    e.preventDefault();
     const payload = {
       type: document.getElementById(prefix + 'Type').value,
       amount: Number(document.getElementById(prefix + 'Amount').value),
@@ -826,19 +733,15 @@
     };
     setLoading(true);
     try {
-      const wasEditing = Boolean(App.editingTransactionId);
-      App.data = wasEditing
+      const wasEdit = Boolean(App.editingTransactionId);
+      App.data = wasEdit
         ? await api('updateTransaction', App.token, App.editingTransactionId, payload)
         : await api('saveTransaction', App.token, payload);
-      document.getElementById(prefix + 'Amount').value = '';
-      document.getElementById(prefix + 'Note').value = '';
-      document.getElementById(prefix + 'Date').value = today();
-      document.getElementById(prefix + 'Time').value = currentTime();
       closeTransactionModal();
       renderAll();
-      showToast(wasEditing ? 'แก้ไขรายการแล้ว' : 'บันทึกรายการแล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกรายการไม่สำเร็จ', true);
+      showToast(wasEdit ? 'แก้ไขรายการแล้ว' : 'บันทึกรายการแล้ว');
+    } catch (err) {
+      showToast(err.message || 'บันทึกรายการไม่สำเร็จ', true);
     } finally {
       setLoading(false);
     }
@@ -847,6 +750,8 @@
   function openNlpModal() {
     document.getElementById('nlpInput').value = '';
     document.getElementById('nlpType').value = 'expense';
+    document.getElementById('nlpDate').value = today();
+    document.getElementById('nlpTime').value = currentTime();
     renderNlpPreview();
     document.getElementById('nlpModal').classList.remove('hidden');
     trackModalOpen('nlpModal', '#nlpInput');
@@ -854,565 +759,228 @@
   }
 
   function closeNlpModal() {
-    const modal = document.getElementById('nlpModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    const m = document.getElementById('nlpModal');
+    if (!m || m.classList.contains('hidden')) return;
+    m.classList.add('hidden');
     trackModalClose();
   }
 
-  function parseNlpAmountToken(token) {
-    const cleaned = String(token || '')
-      .replace(/[฿,]/g, '')
-      .replace(/บาท$/i, '')
-      .trim();
-    if (!/^\d+(?:\.\d+)?$/.test(cleaned)) return null;
-    const amount = Number(cleaned);
-    return amount > 0 ? amount : null;
-  }
-
-  function cleanNlpCategory(tokens) {
-    return tokens.join(' ')
-      .replace(/^(ซื้อ|จ่าย|ค่า|รับ|ได้เงิน)\s+/i, '')
-      .trim() || 'อื่นๆ';
-  }
-
-  // หมวดหมู่ที่เคยเพิ่มไว้ในเครื่องก่อนหน้านี้ (ตอนที่ระบบยังเก็บแค่ใน localStorage)
-  // ยังโหลดมาต่อชั่วคราวเพื่อไม่ให้หายไปจาก dropdown — พอผู้ใช้บันทึกรายการด้วยหมวดนี้อีกครั้ง
-  // เซิร์ฟเวอร์จะสร้างให้ถาวรอัตโนมัติ (ดู ensureCategoryExists_ ฝั่ง Code.js)
-  function loadCustomCategories() {
-    try {
-      const stored = JSON.parse(localStorage.getItem('moneyflow_custom_categories') || '{}');
-      ['expense', 'income'].forEach((type) => {
-        (stored[type] || []).forEach((name) => {
-          if (name && !App.categories[type].includes(name)) App.categories[type].push(name);
-        });
-      });
-    } catch (error) {
-      // เก็บข้อมูลใน localStorage เสียหาย ข้ามการโหลดไปเฉยๆ
-    }
-  }
-
-  // เพิ่มหมวดหมู่ใหม่ชั่วคราวฝั่งหน้าจอ (สำหรับ dropdown ปัจจุบัน) — จะถูกบันทึกถาวรที่เซิร์ฟเวอร์
-  // อัตโนมัติทันทีที่รายการ/งบ/รายการประจำที่ใช้หมวดนี้ถูกบันทึกจริง
-  function addCustomCategory(type, name) {
-    const clean = String(name || '').trim();
-    if (!clean) return;
-    if (!App.categories[type].includes(clean)) App.categories[type].push(clean);
-  }
-
-  function learnedCategoryKey(type, itemName) {
-    return `${type}:${String(itemName || '').trim().toLowerCase()}`;
-  }
-
-  function getLearnedCategories() {
-    try {
-      return JSON.parse(localStorage.getItem('moneyflow_learned_categories') || '{}');
-    } catch (error) {
-      return {};
-    }
-  }
-
-  function getLearnedCategory(type, itemName) {
-    return getLearnedCategories()[learnedCategoryKey(type, itemName)] || null;
-  }
-
-  function saveLearnedCategory(type, itemName, category) {
-    if (!itemName) return;
-    const learned = getLearnedCategories();
-    learned[learnedCategoryKey(type, itemName)] = category;
-    localStorage.setItem('moneyflow_learned_categories', JSON.stringify(learned));
-  }
-
   function detectNlpCategory(type, itemName) {
-    const learned = getLearnedCategory(type, itemName);
-    if (learned) return learned;
-    const dictionary = NLP_CATEGORY_KEYWORDS[type] || {};
-    const lowerName = String(itemName || '').toLowerCase();
-    const matched = Object.keys(dictionary).find((categoryName) =>
-      dictionary[categoryName].some((keyword) => lowerName.includes(keyword.toLowerCase())));
-    return matched || 'อื่นๆ';
+    try {
+      const learned = JSON.parse(localStorage.getItem('moneyflow_learned_categories') || '{}');
+      const key = `${type}:${String(itemName || '').trim().toLowerCase()}`;
+      if (learned[key]) return learned[key];
+    } catch {}
+    const dict = NLP_CATEGORY_KEYWORDS[type] || {};
+    const lower = String(itemName || '').toLowerCase();
+    for (const [cat, words] of Object.entries(dict)) {
+      if (words.some((w) => lower.includes(w.toLowerCase()))) return cat;
+    }
+    return 'อื่นๆ';
   }
 
   function parseNlpCommands(text) {
-    const raw = String(text || '').trim().replace(/[,;|]+/g, ' ').replace(/\s+/g, ' ');
-    const tokens = raw.split(' ').filter(Boolean);
+    const tokens = String(text || '').trim().replace(/[,;|]+/g, ' ').split(/\s+/).filter(Boolean);
     const items = [];
-    let nameTokens = [];
+    let names = [];
+    const date = document.getElementById('nlpDate').value || today();
+    const time = document.getElementById('nlpTime').value || currentTime();
+    const type = document.getElementById('nlpType').value;
 
     tokens.forEach((token) => {
-      const amount = parseNlpAmountToken(token);
-      if (amount) {
-        const itemName = cleanNlpCategory(nameTokens);
-        const type = document.getElementById('nlpType').value;
-        items.push({
-          type,
-          amount,
-          itemName,
-          category: detectNlpCategory(type, itemName),
-          note: itemName,
-          date: today(),
-          source: 'nlp',
-        });
-        nameTokens = [];
+      const cleaned = token.replace(/[฿,]/g, '').replace(/บาท$/i, '');
+      const num = /^\d+(?:\.\d+)?$/.test(cleaned) ? Number(cleaned) : null;
+      if (num && num > 0) {
+        const itemName = names.join(' ').replace(/^(ซื้อ|จ่าย|ค่า|รับ|ได้เงิน)\s+/i, '').trim() || 'อื่นๆ';
+        items.push({ type, amount: num, itemName, category: detectNlpCategory(type, itemName), note: itemName, date, time, source: 'nlp' });
+        names = [];
       } else {
-        nameTokens.push(token);
+        names.push(token);
       }
     });
-
-    if (!items.length) throw new Error('กรุณาพิมพ์เป็น ชื่อรายการ เว้นวรรค ราคา เช่น ข้าวขาหมู 50 น้ำ 10');
-    if (nameTokens.length) {
-      const trailing = nameTokens.join(' ');
-      items[items.length - 1].note = `${items[items.length - 1].note} | ข้อความที่ยังไม่มีราคา: ${trailing}`;
-    }
+    if (!items.length) throw new Error('กรุณาพิมพ์ชื่อรายการและราคา เช่น ข้าวผัด 50 กาแฟ 45');
     return items;
   }
 
   function renderNlpPreview() {
     const preview = document.getElementById('nlpPreview');
-    const text = document.getElementById('nlpInput').value;
-    if (!text.trim()) {
+    const text = document.getElementById('nlpInput').value.trim();
+    if (!text) {
       preview.textContent = 'ระบบจะแยกชื่อรายการและจำนวนเงินให้อัตโนมัติ';
       return;
     }
     try {
       const parsed = parseNlpCommands(text);
-      const sample = parsed.slice(0, 3).map((item) => `${item.category} ${money(item.amount)}`).join(' · ');
-      preview.textContent = `อ่านได้ ${parsed.length} รายการ: ${sample}${parsed.length > 3 ? ' ...' : ''}`;
-    } catch (error) {
-      preview.textContent = error.message;
+      preview.textContent = `อ่านได้ ${parsed.length} รายการ: ${parsed.map((i) => `${i.category} ${money(i.amount)}`).join(' · ')}`;
+    } catch (err) {
+      preview.textContent = err.message;
     }
   }
 
-  async function submitNlpTransaction(event) {
-    event.preventDefault();
-    let payloads;
+  async function submitNlpTransaction(e) {
+    e.preventDefault();
     try {
-      payloads = parseNlpCommands(document.getElementById('nlpInput').value);
-    } catch (error) {
-      showToast(error.message, true);
-      return;
+      const items = parseNlpCommands(document.getElementById('nlpInput').value);
+      openNlpConfirmModal(items);
+    } catch (err) {
+      showToast(err.message, true);
     }
-    openNlpConfirmModal(payloads);
   }
 
   function openNlpConfirmModal(items) {
     App.nlpPendingItems = items;
     closeNlpModal();
-    renderNlpConfirmList(items);
-    document.getElementById('nlpConfirmModal').classList.remove('hidden');
-    trackModalOpen('nlpConfirmModal', '#nlpConfirmModal .nlp-confirm-category');
-    renderIcons();
-  }
-
-  function closeNlpConfirmModal() {
-    const modal = document.getElementById('nlpConfirmModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
-    trackModalClose();
-    App.nlpPendingItems = null;
-  }
-
-  function renderNlpConfirmList(items) {
     const list = document.getElementById('nlpConfirmList');
-    list.innerHTML = items.map((item, index) => {
-      const categories = App.categories[item.type].slice();
-      if (!categories.includes(item.category)) categories.push(item.category);
-      const options = categories.map((name) =>
-        `<option value="${escapeHtml(name)}"${name === item.category ? ' selected' : ''}>${escapeHtml(name)}</option>`
-      ).join('');
+    list.innerHTML = items.map((item, idx) => {
+      const cats = App.categories[item.type].slice();
+      if (!cats.includes(item.category)) cats.push(item.category);
       return `
-        <div class="nlp-confirm-item" data-index="${index}">
+        <div class="nlp-confirm-item" data-index="${idx}">
           <div class="nlp-confirm-item-head">
             <strong>${escapeHtml(item.itemName || item.note)}</strong>
             <span>${money(item.amount)}</span>
           </div>
-          <p class="nlp-confirm-item-hint">ระบบจัดเข้าหมวดหมู่ "${escapeHtml(item.category)}" ถูกต้องไหม?</p>
-          <select class="form-input nlp-confirm-category" data-index="${index}">
-            ${options}
-            <option value="__new__">+ สร้างหมวดหมู่ใหม่</option>
+          <select class="form-input nlp-confirm-category" data-index="${idx}">
+            ${cats.map((c) => `<option value="${escapeHtml(c)}"${c === item.category ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('')}
           </select>
-          <input type="text" class="form-input nlp-confirm-new-category hidden" data-index="${index}" placeholder="พิมพ์ชื่อหมวดหมู่ใหม่">
         </div>
       `;
     }).join('');
-
-    list.querySelectorAll('.nlp-confirm-category').forEach((select) => {
-      select.addEventListener('change', () => {
-        const index = select.dataset.index;
-        const newInput = list.querySelector(`.nlp-confirm-new-category[data-index="${index}"]`);
-        newInput.classList.toggle('hidden', select.value !== '__new__');
-        if (select.value === '__new__') newInput.focus();
-      });
-    });
+    document.getElementById('nlpConfirmModal').classList.remove('hidden');
+    trackModalOpen('nlpConfirmModal');
+    renderIcons();
   }
 
-  function confirmNlpSave() {
+  function closeNlpConfirmModal() {
+    const m = document.getElementById('nlpConfirmModal');
+    if (!m || m.classList.contains('hidden')) return;
+    m.classList.add('hidden');
+    trackModalClose();
+  }
+
+  async function confirmNlpSave() {
     const items = App.nlpPendingItems;
-    if (!items || !items.length) {
-      closeNlpConfirmModal();
-      return;
-    }
-
-    const list = document.getElementById('nlpConfirmList');
-    for (let index = 0; index < items.length; index += 1) {
-      const select = list.querySelector(`.nlp-confirm-category[data-index="${index}"]`);
-      const newInput = list.querySelector(`.nlp-confirm-new-category[data-index="${index}"]`);
-      let category = select.value;
-
-      if (category === '__new__') {
-        category = newInput.value.trim();
-        if (!category) {
-          showToast('กรุณาตั้งชื่อหมวดหมู่ใหม่ให้ครบทุกรายการ', true);
-          newInput.focus();
-          return;
-        }
-        addCustomCategory(items[index].type, category);
-      }
-
-      if (category !== items[index].category) {
-        saveLearnedCategory(items[index].type, items[index].itemName, category);
-      }
-      items[index].category = category;
-      delete items[index].itemName;
-    }
-
-    saveNlpItems(items);
-  }
-
-  async function saveNlpItems(payloads) {
+    if (!items || !items.length) return closeNlpConfirmModal();
+    document.querySelectorAll('.nlp-confirm-category').forEach((sel) => {
+      const idx = Number(sel.dataset.index);
+      items[idx].category = sel.value;
+      delete items[idx].itemName;
+    });
     setLoading(true);
     try {
-      App.data = payloads.length === 1
-        ? await api('saveTransaction', App.token, payloads[0])
-        : await api('saveTransactions', App.token, payloads);
+      App.data = items.length === 1
+        ? await api('saveTransaction', App.token, items[0])
+        : await api('saveTransactions', App.token, items);
       closeNlpConfirmModal();
       renderAll();
-      showToast(`บันทึกรายการแล้ว ${payloads.length} รายการ`);
-    } catch (error) {
-      showToast(error.message || 'บันทึกจากข้อความไม่สำเร็จ', true);
+      showToast(`บันทึกแล้ว ${items.length} รายการ`);
+    } catch (err) {
+      showToast(err.message || 'บันทึกไม่สำเร็จ', true);
     } finally {
       setLoading(false);
     }
   }
 
   function startNlpVoiceInput() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      showToast('เบราว์เซอร์นี้ยังไม่รองรับการพูดเพื่อจด', true);
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'th-TH';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      document.getElementById('nlpInput').value = event.results[0][0].transcript;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return showToast('เบราว์เซอร์นี้ยังไม่รองรับการพูดเพื่อจด', true);
+    const rec = new SR();
+    rec.lang = 'th-TH';
+    rec.onresult = (e) => {
+      document.getElementById('nlpInput').value = e.results[0][0].transcript;
       renderNlpPreview();
     };
-    recognition.onerror = () => showToast('ไม่สามารถรับเสียงได้', true);
-    recognition.start();
+    rec.onerror = () => showToast('ไม่สามารถรับเสียงได้', true);
+    rec.start();
   }
 
   function openOcrModal() {
     App.ocrItems = [];
     document.getElementById('ocrFileInput').value = '';
-    document.getElementById('ocrStatus').textContent = 'รองรับหลายรูป ระบบจะอ่านยอดเงิน วันที่ และเวลาให้ตรวจทานก่อนบันทึก';
+    document.getElementById('ocrStatus').textContent = 'ลากรูปสลิปมาวางหรือเลือกไฟล์เพื่ออ่านยอดเงินอัตโนมัติ';
     renderOcrReviewList();
     document.getElementById('ocrModal').classList.remove('hidden');
-    trackModalOpen('ocrModal', '#ocrModalClose');
+    trackModalOpen('ocrModal');
     renderIcons();
   }
 
   function closeOcrModal() {
-    const modal = document.getElementById('ocrModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    const m = document.getElementById('ocrModal');
+    if (!m || m.classList.contains('hidden')) return;
+    m.classList.add('hidden');
     trackModalClose();
   }
 
-  function handleOcrDragOver(event) {
-    event.preventDefault();
-    document.getElementById('ocrDropZone').classList.add('dragover');
-  }
-
-  function handleOcrDragLeave() {
-    document.getElementById('ocrDropZone').classList.remove('dragover');
-  }
-
-  function handleOcrDrop(event) {
-    event.preventDefault();
-    document.getElementById('ocrDropZone').classList.remove('dragover');
-    handleOcrFiles(event.dataTransfer.files);
-  }
-
   async function handleOcrFiles(fileList) {
-    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+    const files = Array.from(fileList || []).filter((f) => f.type.startsWith('image/'));
     if (!files.length) return;
-    if (!window.Tesseract) {
-      showToast('OCR library ยังโหลดไม่สำเร็จ กรุณาลองใหม่', true);
-      return;
-    }
+    if (!window.Tesseract) return showToast('OCR library ยังไม่พร้อม กรุณาลองใหม่', true);
 
     document.getElementById('ocrStatus').textContent = `กำลังอ่าน ${files.length} รูป...`;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      document.getElementById('ocrStatus').textContent = `กำลังอ่าน ${i + 1}/${files.length}: ${file.name}`;
       try {
-        const result = await Tesseract.recognize(file, 'tha+eng');
-        App.ocrItems.push(parseOcrData(result.data || {}, file.name));
-      } catch (error) {
+        const res = await Tesseract.recognize(file, 'tha+eng');
+        const text = res.data.text || '';
+        const match = text.match(/(?:ยอด|จำนวน|รวม|โอน|ชำระ|total|amount)?\s*(?:฿|บาท|THB)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/i);
+        const amount = match ? Number(match[1].replace(/,/g, '')) : 0;
         App.ocrItems.push({
           type: 'expense',
-          category: file.name.replace(/\.[^.]+$/, ''),
-          amount: 0,
+          category: file.name.replace(/\.[^.]+$/, '').slice(0, 50) || 'สลิป',
+          amount: amount > 0 && amount < 10000000 ? amount : 0,
           date: today(),
-          time: '',
-          note: `OCR อ่านไม่สำเร็จ: ${file.name}`,
+          time: currentTime(),
+          note: `OCR: ${file.name}`,
           source: 'ocr',
         });
+      } catch {
+        App.ocrItems.push({ type: 'expense', category: 'สลิป', amount: 0, date: today(), time: '', note: file.name, source: 'ocr' });
       }
       renderOcrReviewList();
     }
-    document.getElementById('ocrStatus').textContent = `อ่านเสร็จแล้ว ${files.length} รูป กรุณาตรวจทานก่อนบันทึก`;
-  }
-
-  function parseOcrData(data, fileName) {
-    return parseOcrText(data.text || '', fileName, data.words || []);
-  }
-
-  function parseOcrText(text, fileName, words) {
-    const normalized = String(text || '').replace(/\r/g, '\n');
-    const amount = extractOcrAmount(normalized, words || []);
-    const date = extractOcrDate(normalized) || today();
-    const time = extractOcrTime(normalized);
-    const merchant = extractOcrTitle(normalized) || fileName.replace(/\.[^.]+$/, '') || 'สลิป';
-    return {
-      type: 'expense',
-      category: merchant.slice(0, 80),
-      amount,
-      date,
-      time,
-      note: `OCR: ${fileName}${time ? ' เวลา ' + time : ''}`,
-      source: 'ocr',
-    };
-  }
-
-  function extractOcrAmount(text, words) {
-    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
-    const moneyPattern = /(฿|THB|บาท)?\s*(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\s*(บาท|THB)?/gi;
-    const candidates = [];
-
-    lines.forEach((line) => {
-      const lower = line.toLowerCase();
-      const hasKeyword = /(ยอด|จำนวน|จำนวนเงิน|รวม|โอน|ชำระ|เงิน|total|amount|paid|payment)/i.test(lower);
-      const hasBaht = /(฿|บาท|thb)/i.test(lower);
-      let match;
-      moneyPattern.lastIndex = 0;
-      while ((match = moneyPattern.exec(line))) {
-        const value = Number(match[2].replace(/,/g, ''));
-        if (value > 0 && value < 10000000 && !numberLooksLikeDateOrTime(line, match.index, match[0].length)) {
-          let score = 1;
-          if (hasKeyword) score += 7;
-          if (hasBaht || match[1] || match[3]) score += 5;
-          if (/\.\d{2}\b/.test(match[2])) score += 1;
-          candidates.push({ value, score, text: match[2] });
-        }
-      }
-    });
-
-    extractVisualAmountCandidates(words || []).forEach((candidate) => candidates.push(candidate));
-    if (!candidates.length) return 0;
-    candidates.sort((a, b) => (b.score - a.score) || (b.value - a.value));
-    return candidates[0].value;
-  }
-
-  function extractVisualAmountCandidates(words) {
-    const normalizedWords = (words || []).map((word) => {
-      const bbox = word.bbox || {};
-      const height = Math.max(0, Number(bbox.y1 || 0) - Number(bbox.y0 || 0));
-      return {
-        text: String(word.text || '').trim(),
-        bbox,
-        height,
-        y: Number(bbox.y0 || 0),
-      };
-    }).filter((word) => word.text);
-    const heights = normalizedWords.map((word) => word.height).filter(Boolean).sort((a, b) => a - b);
-    const medianHeight = heights.length ? heights[Math.floor(heights.length / 2)] : 0;
-    const candidates = [];
-
-    normalizedWords.forEach((word, index) => {
-      const amount = parseOcrMoneyValue(word.text);
-      if (!amount || amount >= 10000000) return;
-      const nearby = normalizedWords
-        .filter((other) => Math.abs(other.y - word.y) <= Math.max(10, word.height * 0.9))
-        .map((other) => other.text)
-        .join(' ');
-      if (numberLooksLikeDateOrTime(nearby, nearby.indexOf(word.text), word.text.length)) return;
-      let score = 1;
-      if (/(ยอด|จำนวน|จำนวนเงิน|รวม|โอน|ชำระ|เงิน|total|amount|paid|payment)/i.test(nearby)) score += 7;
-      if (/(฿|บาท|thb)/i.test(nearby)) score += 5;
-      if (medianHeight && word.height >= medianHeight * 1.35) score += 5;
-      else if (medianHeight && word.height >= medianHeight * 1.15) score += 2;
-      if (/\.\d{2}\b/.test(word.text)) score += 1;
-      candidates.push({ value: amount, score, text: word.text, index });
-    });
-
-    return candidates;
-  }
-
-  function parseOcrMoneyValue(text) {
-    const match = String(text || '').match(/(?:฿|THB|บาท)?\s*(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\s*(?:บาท|THB)?/i);
-    if (!match) return 0;
-    const value = Number(match[1].replace(/,/g, ''));
-    return value > 0 ? value : 0;
-  }
-
-  function numberLooksLikeDateOrTime(line, start, length) {
-    const safeStart = Math.max(0, start);
-    const safeEnd = Math.max(safeStart, safeStart + length);
-    const before = line.slice(Math.max(0, safeStart - 2), safeStart);
-    const after = line.slice(safeEnd, Math.min(line.length, safeEnd + 2));
-    return /[\/:\-]$/.test(before) || /^[\/:\-]/.test(after);
-  }
-
-  function extractOcrDate(text) {
-    const normalized = text.replace(/\s+/g, ' ');
-    const iso = normalized.match(/\b(20\d{2}|25\d{2})[-\/](\d{1,2})[-\/](\d{1,2})\b/);
-    if (iso) return formatDateParts(normalizeOcrYear(Number(iso[1])), Number(iso[2]), Number(iso[3]));
-    const dmy = normalized.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](20\d{2}|25\d{2}|\d{2})\b/);
-    if (dmy) {
-      const year = normalizeOcrYear(Number(dmy[3]) < 100 ? 2000 + Number(dmy[3]) : Number(dmy[3]));
-      return formatDateParts(year, Number(dmy[2]), Number(dmy[1]));
-    }
-    const monthDate = normalized.match(/\b(\d{1,2})\s*(ม\.?ค\.?|มกราคม|ก\.?พ\.?|กุมภาพันธ์|มี\.?ค\.?|มีนาคม|เม\.?ย\.?|เมษายน|พ\.?ค\.?|พฤษภาคม|มิ\.?ย\.?|มิถุนายน|ก\.?ค\.?|กรกฎาคม|ส\.?ค\.?|สิงหาคม|ก\.?ย\.?|กันยายน|ต\.?ค\.?|ตุลาคม|พ\.?ย\.?|พฤศจิกายน|ธ\.?ค\.?|ธันวาคม|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*(20\d{2}|25\d{2}|\d{2})\b/i);
-    if (monthDate) {
-      const year = normalizeOcrYear(Number(monthDate[3]) < 100 ? 2000 + Number(monthDate[3]) : Number(monthDate[3]));
-      return formatDateParts(year, ocrMonthNumber(monthDate[2]), Number(monthDate[1]));
-    }
-    return '';
-  }
-
-  function extractOcrTime(text) {
-    const match = text.match(/(?:^|\D)([01]?\d|2[0-3])[:.](\d{2})(?:\s*น\.?)?(?!\d)/);
-    return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
-  }
-
-  function normalizeOcrYear(year) {
-    return year >= 2400 ? year - 543 : year;
-  }
-
-  function ocrMonthNumber(monthText) {
-    const key = String(monthText || '').toLowerCase().replace(/\./g, '');
-    const months = {
-      'มค': 1, 'มกราคม': 1, jan: 1, january: 1,
-      'กพ': 2, 'กุมภาพันธ์': 2, feb: 2, february: 2,
-      'มีค': 3, 'มีนาคม': 3, mar: 3, march: 3,
-      'เมย': 4, 'เมษายน': 4, apr: 4, april: 4,
-      'พค': 5, 'พฤษภาคม': 5, may: 5,
-      'มิย': 6, 'มิถุนายน': 6, jun: 6, june: 6,
-      'กค': 7, 'กรกฎาคม': 7, jul: 7, july: 7,
-      'สค': 8, 'สิงหาคม': 8, aug: 8, august: 8,
-      'กย': 9, 'กันยายน': 9, sep: 9, sept: 9, september: 9,
-      'ตค': 10, 'ตุลาคม': 10, oct: 10, october: 10,
-      'พย': 11, 'พฤศจิกายน': 11, nov: 11, november: 11,
-      'ธค': 12, 'ธันวาคม': 12, dec: 12, december: 12,
-    };
-    return months[key] || 0;
-  }
-
-  function extractOcrTitle(text) {
-    return text.split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length >= 3 && !/\d{3,}/.test(line))
-      .slice(0, 1)[0] || '';
-  }
-
-  function formatDateParts(year, month, day) {
-    if (!year || !month || !day || month > 12 || day > 31) return '';
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    document.getElementById('ocrStatus').textContent = `อ่านเสร็จแล้ว ${files.length} รูป ตรวจสอบก่อนบันทึก`;
   }
 
   function renderOcrReviewList() {
     const list = document.getElementById('ocrReviewList');
-    const saveButton = document.getElementById('ocrSaveAllBtn');
-    saveButton.disabled = !App.ocrItems.length;
-    if (!App.ocrItems.length) {
-      list.innerHTML = '';
-      return;
-    }
-    list.innerHTML = App.ocrItems.map((item, index) => `
-      <div class="ocr-review-item" data-ocr-index="${index}">
+    document.getElementById('ocrSaveAllBtn').disabled = !App.ocrItems.length;
+    list.innerHTML = App.ocrItems.map((item, idx) => `
+      <div class="ocr-review-item" data-ocr-index="${idx}">
         <div class="ocr-review-grid">
-          <div>
-            <label class="form-label">ชื่อ/หมวดหมู่</label>
-            <input class="form-input" data-ocr-field="category" value="${escapeHtml(item.category)}">
-          </div>
-          <div>
-            <label class="form-label">จำนวน</label>
-            <input class="form-input" data-ocr-field="amount" type="number" min="0" step="0.01" value="${escapeHtml(item.amount)}">
-          </div>
-          <div>
-            <label class="form-label">วันที่</label>
-            <input class="form-input" data-ocr-field="date" type="date" value="${escapeHtml(item.date)}">
-          </div>
-          <div>
-            <label class="form-label">เวลา</label>
-            <input class="form-input" data-ocr-field="time" type="time" value="${escapeHtml(item.time)}">
-          </div>
-          <button class="ghost-icon" data-remove-ocr="${index}" type="button" title="ลบ">
-            <i data-lucide="trash-2"></i>
-          </button>
+          <div><label class="form-label">หมวดหมู่</label><input class="form-input" data-ocr-field="category" value="${escapeHtml(item.category)}"></div>
+          <div><label class="form-label">จำนวน</label><input class="form-input" data-ocr-field="amount" type="number" min="0" step="0.01" value="${item.amount}"></div>
+          <div><label class="form-label">วันที่</label><input class="form-input" data-ocr-field="date" type="date" value="${item.date}"></div>
+          <div><label class="form-label">เวลา</label><input class="form-input" data-ocr-field="time" type="time" value="${item.time}"></div>
+          <button class="ghost-icon" data-remove-ocr="${idx}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
         </div>
-        <input class="form-input mt-2" data-ocr-field="note" value="${escapeHtml(item.note)}">
       </div>
     `).join('');
-    list.querySelectorAll('[data-ocr-field]').forEach((input) => {
-      input.addEventListener('input', syncOcrReviewData);
-    });
-    list.querySelectorAll('[data-remove-ocr]').forEach((button) => {
-      button.addEventListener('click', () => {
-        App.ocrItems.splice(Number(button.dataset.removeOcr), 1);
+    list.querySelectorAll('[data-remove-ocr]').forEach((b) => {
+      b.addEventListener('click', () => {
+        App.ocrItems.splice(Number(b.dataset.removeOcr), 1);
         renderOcrReviewList();
       });
     });
     renderIcons();
   }
 
-  function syncOcrReviewData() {
-    document.querySelectorAll('[data-ocr-index]').forEach((row) => {
-      const index = Number(row.dataset.ocrIndex);
+  async function saveOcrTransactions() {
+    document.querySelectorAll('.ocr-review-item').forEach((row, idx) => {
       row.querySelectorAll('[data-ocr-field]').forEach((input) => {
         const field = input.dataset.ocrField;
-        App.ocrItems[index][field] = field === 'amount' ? Number(input.value) : input.value;
+        App.ocrItems[idx][field] = field === 'amount' ? Number(input.value) : input.value;
       });
     });
-  }
-
-  async function saveOcrTransactions() {
-    syncOcrReviewData();
-    const payloads = App.ocrItems
-      .filter((item) => Number(item.amount) > 0 && item.category && item.date)
-      .map((item) => ({
-        type: item.type || 'expense',
-        amount: Number(item.amount),
-        category: item.category,
-        note: item.note || (item.time ? `OCR เวลา ${item.time}` : 'OCR'),
-        date: item.date,
-        source: 'ocr',
-      }));
-    if (!payloads.length) {
-      showToast('ยังไม่มีรายการ OCR ที่พร้อมบันทึก', true);
-      return;
-    }
+    const payloads = App.ocrItems.filter((i) => i.amount > 0 && i.category);
+    if (!payloads.length) return showToast('ยังไม่มีรายการที่พร้อมบันทึก', true);
     setLoading(true);
     try {
       App.data = await api('saveTransactions', App.token, payloads);
       closeOcrModal();
       renderAll();
       showToast(`บันทึก OCR แล้ว ${payloads.length} รายการ`);
-    } catch (error) {
-      showToast(error.message || 'บันทึก OCR ไม่สำเร็จ', true);
+    } catch (err) {
+      showToast(err.message || 'บันทึกไม่สำเร็จ', true);
     } finally {
       setLoading(false);
     }
@@ -1420,128 +988,62 @@
 
   function setHistoryGroup(group) {
     App.historyGroup = group;
-    document.querySelectorAll('[data-history-group]').forEach((button) => {
-      button.classList.toggle('active', button.dataset.historyGroup === group);
-    });
+    document.querySelectorAll('[data-history-group]').forEach((b) => b.classList.toggle('active', b.dataset.historyGroup === group));
     renderTransactions();
   }
 
-  const HISTORY_LEVEL_LABEL = { day: 'รายวัน', week: 'รายสัปดาห์', month: 'รายเดือน' };
-
-  function parseDateValue_(value) {
-    const parts = String(value).split('-').map(Number);
-    return new Date(parts[0], parts[1] - 1, parts[2]);
-  }
-
-  function startOfWeekSunday_(date) {
-    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    start.setDate(start.getDate() - start.getDay());
-    return start;
-  }
-
-  function startOfMonth_(date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  }
-
-  function ymd_(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
-
-  function historyGroupInfo_(tx, level) {
-    const date = parseDateValue_(tx.date);
-    if (level === 'week') {
-      const start = startOfWeekSunday_(date);
-      return { key: 'w' + ymd_(start), sortKey: ymd_(start), start: start };
-    }
-    if (level === 'month') {
-      const start = startOfMonth_(date);
-      return { key: 'm' + ymd_(start), sortKey: ymd_(start), start: start };
-    }
-    return { key: 'd' + tx.date, sortKey: tx.date, start: date };
-  }
-
-  function historyGroupLabel_(start, level) {
-    if (level === 'week') {
-      const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
-      const startStr = new Intl.DateTimeFormat('th-TH', sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' }).format(start);
-      const endStr = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(end);
-      return `${startStr} – ${endStr}`;
-    }
-    if (level === 'month') {
-      return new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(start);
-    }
-    return new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(start);
-  }
-
-  function historyGroupHeaderHtml_(group, level) {
-    return `
-      <div class="ledger-group-head">
-        <div>
-          <p class="card-kicker">${HISTORY_LEVEL_LABEL[level]}</p>
-          <span class="date">${escapeHtml(historyGroupLabel_(group.start, level))}</span>
-        </div>
-        <div class="tot">
-          สุทธิช่วงนี้ <b class="${group.income - group.expense >= 0 ? 'amount-income' : 'amount-expense'}">${group.income - group.expense >= 0 ? '+' : ''}${money(group.income - group.expense)}</b>
-          &nbsp;·&nbsp; สะสม <b>${money(group.cumBalance)}</b>
-        </div>
-      </div>
-    `;
+  function parseDateVal(val) {
+    const p = String(val).split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
   }
 
   function renderTransactions() {
     const list = document.getElementById('transactionList');
     const q = document.getElementById('transactionSearch').value.trim().toLowerCase();
-    const level = App.historyGroup || 'day';
-    const items = (App.data.transactions || []).filter((tx) => {
-      return !q || `${tx.category} ${tx.note} ${tx.date}`.toLowerCase().includes(q);
-    });
-
+    const items = (App.data.transactions || []).filter((t) => !q || `${t.category} ${t.note} ${t.date}`.toLowerCase().includes(q));
     if (!items.length) {
       list.innerHTML = emptyHtml('ยังไม่มีรายการ');
       return;
     }
 
-    // Walk chronologically (oldest first) so cumulative totals accrue correctly,
-    // then render newest-first with each group carrying its subtotal + running total.
-    const ascending = [...items].sort((a, b) => String(a.date + a.createdAt).localeCompare(String(b.date + b.createdAt)));
-
-    const groupOrder = [];
     const groups = {};
-    let cumIncome = 0;
-    let cumExpense = 0;
-
-    ascending.forEach((tx) => {
-      const info = historyGroupInfo_(tx, level);
-      if (!groups[info.key]) {
-        groups[info.key] = { start: info.start, sortKey: info.sortKey, income: 0, expense: 0, txs: [] };
-        groupOrder.push(info.key);
+    items.forEach((tx) => {
+      let key = tx.date;
+      if (App.historyGroup === 'week') {
+        const d = parseDateVal(tx.date);
+        d.setDate(d.getDate() - d.getDay());
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      } else if (App.historyGroup === 'month') {
+        key = tx.date.slice(0, 7) + '-01';
       }
-      const amount = Number(tx.amount || 0);
-      if (tx.type === 'income') {
-        groups[info.key].income += amount;
-        cumIncome += amount;
-      } else {
-        groups[info.key].expense += amount;
-        cumExpense += amount;
-      }
-      groups[info.key].txs.push(tx);
-      groups[info.key].cumIncome = cumIncome;
-      groups[info.key].cumExpense = cumExpense;
-      groups[info.key].cumBalance = cumIncome - cumExpense;
+      if (!groups[key]) groups[key] = { key, income: 0, expense: 0, items: [] };
+      if (tx.type === 'income') groups[key].income += Number(tx.amount || 0);
+      else groups[key].expense += Number(tx.amount || 0);
+      groups[key].items.push(tx);
     });
 
-    const orderedGroups = groupOrder.map((key) => groups[key]).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-
-    list.innerHTML = orderedGroups.map((group) => {
-      const rows = [...group.txs]
-        .sort((a, b) => String(b.date + b.createdAt).localeCompare(String(a.date + a.createdAt)))
-        .map((tx) => ledgerRowHtml(tx, level))
-        .join('');
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+    list.innerHTML = sortedKeys.map((k) => {
+      const g = groups[k];
+      const net = g.income - g.expense;
+      const label = dateDisplay(k);
+      const rows = g.items.map((tx) => `
+        <div class="ledger-row" data-tx-id="${tx.transactionId}">
+          <div class="desc">${escapeHtml(tx.category)}<span>${dateDisplay(tx.date)} ${timeDisplay(tx.createdAt) ? '· ' + timeDisplay(tx.createdAt) + ' น.' : ''} ${tx.note ? '· ' + escapeHtml(tx.note) : ''}</span></div>
+          <div class="debit">${tx.type === 'expense' ? money(tx.amount) : ''}</div>
+          <div class="credit">${tx.type === 'income' ? money(tx.amount) : ''}</div>
+          <div class="row-actions">
+            <button class="icon-chip-sm" data-edit-tx="${tx.transactionId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
+            <button class="icon-chip-sm danger" data-delete-tx="${tx.transactionId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+      `).join('');
       return `
         <div class="ledger-group">
-          ${historyGroupHeaderHtml_(group, level)}
+          <div class="ledger-group-head">
+            <div><span class="date">${escapeHtml(label)}</span></div>
+            <div class="tot">สุทธิช่วงนี้ <b class="${net >= 0 ? 'amount-income' : 'amount-expense'}">${net >= 0 ? '+' : ''}${money(net)}</b></div>
+          </div>
           ${rows}
         </div>
       `;
@@ -1551,80 +1053,48 @@
     renderIcons();
   }
 
-  function ledgerRowHtml(tx, level) {
-    const isIncome = tx.type === 'income';
-    const source = tx.source === 'recurring' ? ' · อัตโนมัติ' : '';
-    // รายวันมีวันที่อยู่ในหัวกลุ่มอยู่แล้ว ส่วนรายสัปดาห์/รายเดือนกำกับวันที่ต่อรายการไว้ด้วย
-    const rowDate = level !== 'day' ? rowDateDisplay_(tx.date) : '';
-    const time = timeDisplay(tx.createdAt) ? timeDisplay(tx.createdAt) + ' น.' : '';
-    const meta = `${rowDate}${rowDate && time ? ' · ' : ''}${time}${source}${tx.note ? ' · ' + escapeHtml(tx.note) : ''}`;
-    return `
-      <div class="ledger-row" data-tx-id="${tx.transactionId}">
-        <div class="desc">${escapeHtml(tx.category)}${meta ? `<span>${meta}</span>` : ''}</div>
-        <div class="debit">${!isIncome ? money(tx.amount) : ''}</div>
-        <div class="credit">${isIncome ? money(tx.amount) : ''}</div>
-        <div class="row-actions">
-          <button class="icon-chip-sm" data-edit-tx="${tx.transactionId}" type="button" title="แก้ไขรายการ"><i data-lucide="pencil"></i></button>
-          <button class="icon-chip-sm danger" data-delete-tx="${tx.transactionId}" type="button" title="ลบรายการ"><i data-lucide="trash-2"></i></button>
-        </div>
-      </div>
-    `;
-  }
-
   function transactionRowHtml(tx) {
-    const isIncome = tx.type === 'income';
-    const amount = `${isIncome ? '+' : '-'}${money(tx.amount)}`;
-    const note = tx.note ? `<p class="truncate text-xs text-slate-500 dark:text-slate-400">${escapeHtml(tx.note)}</p>` : '';
-    const source = tx.source === 'recurring' ? '<span class="status-pill">Auto</span>' : '';
+    const isInc = tx.type === 'income';
     return `
       <div class="transaction-row">
         <div class="flex min-w-0 items-center gap-3">
-          <div class="transaction-icon ${isIncome ? 'income' : 'expense'}">
-            <i data-lucide="${isIncome ? 'arrow-down-left' : 'arrow-up-right'}"></i>
-          </div>
+          <div class="transaction-icon ${isInc ? 'income' : 'expense'}"><i data-lucide="${isInc ? 'arrow-down-left' : 'arrow-up-right'}"></i></div>
           <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="truncate font-extrabold">${escapeHtml(tx.category)}</p>${source}
-            </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">${dateDisplay(tx.date)}${timeDisplay(tx.createdAt) ? ' · บันทึกเวลา ' + timeDisplay(tx.createdAt) + ' น.' : ''}</p>
-            ${note}
+            <p class="truncate font-extrabold">${escapeHtml(tx.category)}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">${dateDisplay(tx.date)}</p>
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-2">
-          <strong class="${isIncome ? 'amount-income' : 'amount-expense'}">${amount}</strong>
-          <button class="ghost-icon" data-edit-tx="${tx.transactionId}" type="button" title="แก้ไขรายการ">
-            <i data-lucide="pencil"></i>
-          </button>
-          <button class="ghost-icon" data-delete-tx="${tx.transactionId}" type="button" title="ลบรายการ">
-            <i data-lucide="trash-2"></i>
-          </button>
+          <strong class="${isInc ? 'amount-income' : 'amount-expense'}">${isInc ? '+' : '-'}${money(tx.amount)}</strong>
+          <button class="ghost-icon" data-edit-tx="${tx.transactionId}" type="button"><i data-lucide="pencil"></i></button>
+          <button class="ghost-icon" data-delete-tx="${tx.transactionId}" type="button"><i data-lucide="trash-2"></i></button>
         </div>
       </div>
     `;
   }
 
   function bindTransactionDelete(root) {
-    root.querySelectorAll('[data-edit-tx]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const transaction = (App.data.transactions || []).find((item) => item.transactionId === button.dataset.editTx);
-        if (transaction) openTransactionModal(transaction);
+    root.querySelectorAll('[data-edit-tx]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const tx = (App.data.transactions || []).find((i) => i.transactionId === b.dataset.editTx);
+        if (tx) openTransactionModal(tx);
       });
     });
-    root.querySelectorAll('[data-delete-tx]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const row = button.closest('.transaction-row');
-        const transactionId = button.dataset.deleteTx;
+    root.querySelectorAll('[data-delete-tx]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const row = b.closest('.transaction-row, .ledger-row');
+        const id = b.dataset.deleteTx;
         startUndoDelete({
           message: 'ลบรายการแล้ว',
-          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
-          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+          onHide: () => row?.classList.add('is-pending-delete'),
+          onShow: () => row?.classList.remove('is-pending-delete'),
           onCommit: async () => {
             setLoading(true);
             try {
-              App.data = await api('deleteTransaction', App.token, transactionId);
+              App.data = await api('deleteTransaction', App.token, id);
               renderAll();
-            } catch (error) {
-              showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
+            } catch (err) {
+              showToast(err.message || 'ลบไม่สำเร็จ', true);
             } finally {
               setLoading(false);
             }
@@ -1632,45 +1102,52 @@
         });
       });
     });
-    renderIcons();
   }
 
-  function populateBudgetCategoryOptions() {
+  function populateBudgetCategoryOptions(selectedCategory) {
     const select = document.getElementById('budgetCategory');
-    select.innerHTML = App.categories.expense.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+    if (!select) return;
+    const cats = (App.categories && App.categories.expense ? App.categories.expense : []).slice();
+    if (selectedCategory && !cats.includes(selectedCategory)) {
+      cats.push(selectedCategory);
+    }
+    if (!cats.length) {
+      cats.push('ทั่วไป', 'อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'ที่พัก', 'บิลค่าน้ำไฟ');
+    }
+    select.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (selectedCategory) select.value = selectedCategory;
   }
 
   function setBudgetScope(scope) {
-    document.querySelectorAll('[data-budget-scope]').forEach((item) => {
-      item.classList.toggle('active', item.dataset.budgetScope === scope);
-    });
+    document.querySelectorAll('[data-budget-scope]').forEach((b) => b.classList.toggle('active', b.dataset.budgetScope === scope));
     document.getElementById('budgetScope').value = scope;
     document.getElementById('budgetCategoryField').classList.toggle('hidden', scope !== 'category');
   }
 
-  async function submitBudget(event) {
-    event.preventDefault();
-    const scope = document.getElementById('budgetScope').value;
-    const payload = {
-      period: document.getElementById('budgetPeriod').value,
-      amount: Number(document.getElementById('budgetAmount').value),
-      startDate: document.getElementById('budgetStart').value || today(),
-      category: scope === 'category' ? document.getElementById('budgetCategory').value : '',
-    };
-    const editingId = document.getElementById('budgetEditingId').value;
-    setLoading(true);
-    try {
-      App.data = editingId
-        ? await api('updateBudget', App.token, editingId, payload)
-        : await api('saveBudget', App.token, payload);
+  function openBudgetFormModal(budget) {
+    populateBudgetCategoryOptions(budget ? budget.category : null);
+    if (budget) {
+      document.getElementById('budgetEditingId').value = budget.budgetId;
+      document.getElementById('budgetPeriod').value = budget.period;
+      document.getElementById('budgetAmount').value = budget.amount;
+      document.getElementById('budgetStart').value = budget.startDate;
+      setBudgetScope(budget.category ? 'category' : 'overall');
+      if (budget.category) document.getElementById('budgetCategory').value = budget.category;
+      document.getElementById('budgetCancelEdit').classList.remove('hidden');
+      document.getElementById('budgetSubmitLabel').textContent = 'บันทึกการแก้ไข';
+      document.getElementById('budgetFormModalTitle').textContent = 'แก้ไขงบประมาณ';
+    } else {
       resetBudgetForm();
-      renderAll();
-      showToast(editingId ? 'แก้ไขงบประมาณแล้ว' : 'บันทึกงบประมาณแล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกงบไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
     }
+    document.getElementById('budgetFormModal').classList.remove('hidden');
+    trackModalOpen('budgetFormModal', '#budgetAmount');
+    renderIcons();
+  }
+
+  function closeBudgetFormModal() {
+    document.getElementById('budgetFormModal').classList.add('hidden');
+    resetBudgetForm();
+    trackModalClose();
   }
 
   function resetBudgetForm() {
@@ -1678,218 +1155,183 @@
     document.getElementById('budgetEditingId').value = '';
     document.getElementById('budgetCancelEdit').classList.add('hidden');
     document.getElementById('budgetSubmitLabel').textContent = 'บันทึกงบ';
+    document.getElementById('budgetFormModalTitle').textContent = 'ตั้งงบประมาณ';
     document.getElementById('budgetStart').value = today();
     setBudgetScope('overall');
   }
 
   function startEditBudget(budget) {
-    document.getElementById('budgetEditingId').value = budget.budgetId;
-    document.getElementById('budgetPeriod').value = budget.period;
-    document.getElementById('budgetAmount').value = budget.amount;
-    document.getElementById('budgetStart').value = budget.startDate;
-    setBudgetScope(budget.category ? 'category' : 'overall');
-    if (budget.category) document.getElementById('budgetCategory').value = budget.category;
-    document.getElementById('budgetCancelEdit').classList.remove('hidden');
-    document.getElementById('budgetSubmitLabel').textContent = 'บันทึกการแก้ไข';
-    setView('budget');
-    document.getElementById('budgetAmount').focus();
+    openBudgetFormModal(budget);
   }
 
-  async function moveBudget(budgetId, direction) {
-    const budgets = App.data.budgets || [];
-    const index = budgets.findIndex((item) => item.budgetId === budgetId);
-    if (index < 0) return;
-    const swapWith = direction === 'up' ? index - 1 : index + 1;
-    if (swapWith < 0 || swapWith >= budgets.length) return;
-
-    const orderedIds = budgets.map((item) => item.budgetId);
-    [orderedIds[index], orderedIds[swapWith]] = [orderedIds[swapWith], orderedIds[index]];
-
+  async function submitBudget(e) {
+    e.preventDefault();
+    const scope = document.getElementById('budgetScope').value;
+    const amountVal = Number(document.getElementById('budgetAmount').value);
+    if (!amountVal || amountVal <= 0) {
+      showToast('กรุณากรอกวงเงินที่มากกว่า 0', true);
+      return;
+    }
+    const payload = {
+      period: document.getElementById('budgetPeriod').value,
+      amount: amountVal,
+      startDate: document.getElementById('budgetStart').value || today(),
+      category: scope === 'category' ? document.getElementById('budgetCategory').value : '',
+    };
+    const editingId = document.getElementById('budgetEditingId').value;
     setLoading(true);
     try {
-      App.data = await api('reorderBudgets', App.token, orderedIds);
+      App.data = editingId ? await api('updateBudget', App.token, editingId, payload) : await api('saveBudget', App.token, payload);
+      closeBudgetFormModal();
       renderAll();
-      if (swapWith === 0 || index === 0) showToast('อัปเดตงบหลักแล้ว');
-    } catch (error) {
-      showToast(error.message || 'จัดลำดับไม่สำเร็จ', true);
+      showToast(editingId ? 'แก้ไขงบประมาณแล้ว' : 'บันทึกงบประมาณแล้ว');
+    } catch (err) {
+      showToast(err.message || 'บันทึกงบไม่สำเร็จ', true);
     } finally {
       setLoading(false);
     }
   }
 
-  function daysLeftInPeriod(periodEnd) {
-    if (!periodEnd) return null;
-    const parts = String(periodEnd).split('-').map(Number);
-    const end = new Date(parts[0], parts[1] - 1, parts[2]);
-    const now = new Date();
-    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffDays = Math.round((end.getTime() - todayMid.getTime()) / 86400000) + 1;
-    return Math.max(0, diffDays);
-  }
-
   function renderBudgets() {
-    document.getElementById('budgetStart').value ||= today();
-
     const primary = App.data.budget;
     const budgets = App.data.budgets || [];
-    const heroBadge = document.getElementById('budgetHeroBadge');
-    const heroEditBtn = document.getElementById('budgetHeroEditBtn');
-    const heroRisk = document.getElementById('budgetHeroRisk');
     const ringFill = document.getElementById('budgetHeroRingFill');
-    const circumference = 2 * Math.PI * 52;
-    ringFill.style.strokeDasharray = circumference;
+    const circ = 2 * Math.PI * 52;
+    ringFill.style.strokeDasharray = circ;
 
-    if (primary && primary.amount) {
+    if (primary && primary.amount > 0) {
       const ratio = Math.max(0, primary.ratio || 0);
-      ringFill.style.strokeDashoffset = String(circumference * (1 - Math.min(1, ratio)));
+      ringFill.style.strokeDashoffset = String(circ * (1 - Math.min(1, ratio)));
       ringFill.classList.toggle('is-warning', ratio >= 0.8 && ratio <= 1);
       ringFill.classList.toggle('is-danger', ratio > 1);
       document.getElementById('budgetHeroPercent').textContent = `${Math.round(ratio * 100)}%`;
-      document.getElementById('budgetHeroName').textContent = primary.category ? primary.category : 'ทุกหมวด';
-      heroBadge.classList.remove('hidden');
-      heroEditBtn.classList.remove('hidden');
+      document.getElementById('budgetHeroName').textContent = primary.category ? escapeHtml(primary.category) : 'ทุกหมวด (งบรวม)';
       document.getElementById('budgetHeroSpent').textContent = money(primary.spent);
+
       const remainEl = document.getElementById('budgetHeroRemain');
       remainEl.textContent = money(primary.remaining);
       remainEl.classList.toggle('is-negative', primary.remaining < 0);
 
-      const daysLeft = daysLeftInPeriod(primary.periodEnd);
-      document.getElementById('budgetHeroDaysLeft').textContent = daysLeft !== null ? `${daysLeft} วัน` : '—';
-      const dailyAllowanceEl = document.getElementById('budgetHeroDailyAllowance');
-      if (primary.remaining <= 0) {
-        dailyAllowanceEl.textContent = money(0);
-        dailyAllowanceEl.classList.add('is-negative');
-      } else if (daysLeft) {
-        dailyAllowanceEl.textContent = money(primary.remaining / daysLeft);
-        dailyAllowanceEl.classList.remove('is-negative');
-      } else {
-        dailyAllowanceEl.textContent = '—';
-        dailyAllowanceEl.classList.remove('is-negative');
+      document.getElementById('budgetHeroBadge').classList.remove('hidden');
+      document.getElementById('budgetHeroEditBtn').classList.remove('hidden');
+
+      const daysLeftEl = document.getElementById('budgetHeroDaysLeft');
+      const dailyAllowEl = document.getElementById('budgetHeroDailyAllowance');
+      let dailyAllowText = '฿0';
+      if (daysLeftEl && dailyAllowEl) {
+        if (primary.periodEnd) {
+          const end = parseDateVal(primary.periodEnd);
+          const t = parseDateVal(today());
+          const diffDays = Math.max(1, Math.round((end - t) / 86400000) + 1);
+          daysLeftEl.textContent = `${diffDays} วัน`;
+          const allow = Math.max(0, (primary.remaining || 0) / diffDays);
+          dailyAllowText = money(allow);
+          dailyAllowEl.textContent = dailyAllowText;
+        } else {
+          daysLeftEl.textContent = '—';
+          dailyAllowEl.textContent = '฿0';
+        }
       }
 
-      const stats = primary.overspend || { totalCycles: 0, overCount: 0, overProbabilityPercent: 0 };
-      if (primary.overBudget) {
-        heroRisk.className = 'budget-hero-risk';
-        heroRisk.innerHTML = `<i data-lucide="alert-triangle"></i><span>เกินงบไปแล้ว ${money(Math.abs(primary.remaining))} ในรอบนี้</span>`;
-      } else if (stats.totalCycles > 0 && stats.overProbabilityPercent >= 50) {
-        heroRisk.className = 'budget-hero-risk';
-        heroRisk.innerHTML = `<i data-lucide="alert-triangle"></i><span>ที่ผ่านมาเกินงบ ${stats.overCount}/${stats.totalCycles} รอบ (${stats.overProbabilityPercent}%) — รอบนี้ระวังหน่อยนะ</span>`;
-      } else if (stats.totalCycles > 0 && stats.overCount === 0) {
-        heroRisk.className = 'budget-hero-risk is-ok';
-        heroRisk.innerHTML = `<i data-lucide="thumbs-up"></i><span>ไม่เคยเกินงบเลยใน ${stats.totalCycles} รอบที่ผ่านมา 👍</span>`;
-      } else {
-        heroRisk.innerHTML = '';
+      const riskEl = document.getElementById('budgetHeroRisk');
+      if (riskEl) {
+        riskEl.classList.remove('hidden');
+        if (primary.overBudget) {
+          riskEl.className = 'budget-hero-risk';
+          riskEl.innerHTML = `<i data-lucide="alert-triangle"></i><span>ใช้เงินเกินงบแล้ว ${money(Math.abs(primary.remaining))} (รอบสิ้นสุด ${dateDisplay(primary.periodEnd)})</span>`;
+        } else if (ratio >= 0.8) {
+          riskEl.className = 'budget-hero-risk';
+          riskEl.innerHTML = `<i data-lucide="alert-circle"></i><span>ใกล้เต็มวงเงินแล้ว (${Math.round(ratio * 100)}%) เหลือใช้ได้อีก ${money(primary.remaining)}</span>`;
+        } else {
+          riskEl.className = 'budget-hero-risk is-ok';
+          riskEl.innerHTML = `<i data-lucide="check-circle-2"></i><span>การใช้จ่ายอยู่ในเกณฑ์ปกติ (เฉลี่ยใช้วันละไม่เกิน ${dailyAllowText} จนถึงสิ้นรอบ)</span>`;
+        }
       }
-      heroRisk.classList.toggle('hidden', !heroRisk.innerHTML);
     } else {
-      ringFill.style.strokeDashoffset = String(circumference);
+      ringFill.style.strokeDashoffset = String(circ);
       ringFill.classList.remove('is-warning', 'is-danger');
       document.getElementById('budgetHeroPercent').textContent = '—';
       document.getElementById('budgetHeroName').textContent = 'ยังไม่ได้ตั้งงบหลัก';
-      heroBadge.classList.add('hidden');
-      heroEditBtn.classList.add('hidden');
-      document.getElementById('budgetHeroSpent').textContent = money(0);
-      document.getElementById('budgetHeroRemain').textContent = money(0);
-      document.getElementById('budgetHeroDaysLeft').textContent = '—';
-      document.getElementById('budgetHeroDailyAllowance').textContent = '—';
-      heroRisk.classList.add('hidden');
+      document.getElementById('budgetHeroSpent').textContent = '฿0';
+      const remainEl = document.getElementById('budgetHeroRemain');
+      remainEl.textContent = '฿0';
+      remainEl.classList.remove('is-negative');
+      document.getElementById('budgetHeroBadge').classList.add('hidden');
+      document.getElementById('budgetHeroEditBtn').classList.add('hidden');
+      const daysLeftEl = document.getElementById('budgetHeroDaysLeft');
+      const dailyAllowEl = document.getElementById('budgetHeroDailyAllowance');
+      if (daysLeftEl) daysLeftEl.textContent = '—';
+      if (dailyAllowEl) dailyAllowEl.textContent = '฿0';
+      const riskEl = document.getElementById('budgetHeroRisk');
+      if (riskEl) {
+        riskEl.className = 'budget-hero-risk hidden';
+        riskEl.innerHTML = '';
+      }
     }
 
-    const totalAmount = budgets.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const overCount = budgets.filter((item) => item.overBudget).length;
+    const totalAmt = budgets.reduce((s, b) => s + Number(b.amount || 0), 0);
+    const overCount = budgets.filter((b) => b.overBudget).length;
     document.getElementById('budgetOverviewCount').textContent = `${budgets.length} งบ`;
-    document.getElementById('budgetOverviewTotal').textContent = money(totalAmount);
+    document.getElementById('budgetOverviewTotal').textContent = money(totalAmt);
     document.getElementById('budgetOverviewOverCount').textContent = `${overCount} งบ`;
     document.getElementById('budgetOverviewOverChip').classList.toggle('is-danger', overCount > 0);
+    document.getElementById('budgetOverFilterToggle').classList.toggle('active', Boolean(App.budgetShowOverOnly));
 
-    const filterToggle = document.getElementById('budgetOverFilterToggle');
-    filterToggle.classList.toggle('active', App.budgetShowOverOnly);
-    filterToggle.textContent = overCount ? `เกินงบเท่านั้น (${overCount})` : 'เกินงบเท่านั้น';
-
+    const visible = App.budgetShowOverOnly ? budgets.filter((b) => b.overBudget) : budgets;
     const list = document.getElementById('budgetList');
-    const visibleBudgets = App.budgetShowOverOnly ? budgets.filter((item) => item.overBudget) : budgets;
-    list.innerHTML = visibleBudgets.length ? visibleBudgets.map((budget) => {
-      const index = budgets.indexOf(budget);
-      const isPrimary = index === 0;
-      const ratioClamped = Math.max(0, Math.min(1, budget.ratio || 0));
-      const barClass = budget.overBudget ? 'danger' : (budget.ratio >= 0.8 ? 'warning' : '');
-      const pillClass = budget.overBudget ? 'is-danger-pill' : (budget.ratio >= 0.8 ? 'is-warning-pill' : 'is-ok-pill');
-      const ringStatusClass = budget.overBudget ? 'danger' : (budget.ratio >= 0.8 ? 'warning' : '');
-      const ringCircumference = 2 * Math.PI * 16;
-      const daysLeft = daysLeftInPeriod(budget.periodEnd);
-      const cardClass = budget.overBudget ? 'is-over-budget' : (isPrimary ? 'is-primary-budget' : '');
-      const accentColor = categoryColorFor(budget.category);
-      const accentStyle = accentColor ? ` style="--accent:${accentColor}"` : '';
-      const stepper = App.budgetShowOverOnly ? '' : `
-        <div class="order-stepper">
-          <button data-move-budget="up" data-budget-order-id="${budget.budgetId}" type="button" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up"></i></button>
-          <button data-move-budget="down" data-budget-order-id="${budget.budgetId}" type="button" title="เลื่อนลง" ${index === budgets.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down"></i></button>
-        </div>
-      `;
-      return `
-      <div class="envelope is-budget ${cardClass}" data-budget-id="${budget.budgetId}"${accentStyle}>
-        <div class="envelope-top">
-          <div class="flex items-center gap-1" style="flex-wrap:wrap;">
-            ${isPrimary ? '<span class="status-pill is-primary-pill">⭐ หลัก</span>' : ''}
-            <span class="status-pill ${pillClass}">${budget.percent}%</span>
-          </div>
-          <div class="envelope-actions">
-            ${stepper}
-            <button class="icon-chip-sm" data-edit-budget="${budget.budgetId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
-            <button class="icon-chip-sm danger" data-delete-budget="${budget.budgetId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
-          </div>
-        </div>
-        <div class="envelope-head-row">
-          <div class="goal-ring-badge ${ringStatusClass}">
-            <svg viewBox="0 0 36 36">
-              <circle class="ring-track" cx="18" cy="18" r="16"></circle>
-              <circle class="ring-fill" cx="18" cy="18" r="16" style="stroke-dasharray:${ringCircumference};stroke-dashoffset:${ringCircumference * (1 - ratioClamped)}"></circle>
-            </svg>
-            <span class="ring-icon-bg"></span>
-            <span class="ring-icon"><i data-lucide="${budgetIconFor(budget.category)}"></i></span>
-          </div>
-          <div class="min-w-0">
-            <p class="cat truncate">${budget.category ? escapeHtml(budget.category) : 'ทุกหมวด'}</p>
-            <strong class="amt">${money(budget.amount)}</strong>
-          </div>
-        </div>
-        <div class="track"><i class="${barClass}" style="width:${Math.min(100, Math.round(budget.ratio * 100))}%"></i></div>
-        <small>ใช้ไป ${money(budget.spent)} · ${App.periodLabel[budget.period] || budget.period}</small>
-        <div style="margin-top:.4rem;">
-          <span class="budget-days-left"><i data-lucide="calendar-clock"></i>${daysLeft !== null ? `เหลือ ${daysLeft} วันในรอบนี้` : ''}</span>
-        </div>
-      </div>
-    `;
-    }).join('') : emptyHtml(App.budgetShowOverOnly ? 'ไม่มีงบที่เกินอยู่ตอนนี้ 🎉' : 'ยังไม่ได้ตั้งงบประมาณ');
+    if (!visible.length) {
+      list.innerHTML = emptyHtml(App.budgetShowOverOnly ? 'ไม่มีงบประมาณที่เกินงบในขณะนี้' : 'ยังไม่มีงบประมาณ กดปุ่ม "ตั้งงบประมาณ" เพื่อเริ่มต้น');
+    } else {
+      list.innerHTML = visible.map((b) => {
+        const isPrimary = (primary && primary.budgetId === b.budgetId);
+        const percentVal = b.percent || Math.round((b.ratio || 0) * 100);
+        const barWidth = Math.min(100, Math.round((b.ratio || 0) * 100));
+        const statusClass = b.overBudget ? 'is-danger-pill' : b.ratio >= 0.8 ? 'is-warning-pill' : 'is-ok-pill';
+        const barClass = b.overBudget ? 'danger' : b.ratio >= 0.8 ? 'warning' : '';
 
-    list.querySelectorAll('[data-move-budget]').forEach((button) => {
-      button.addEventListener('click', () => moveBudget(button.dataset.budgetOrderId, button.dataset.moveBudget));
-    });
-    list.querySelectorAll('[data-edit-budget]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const budget = budgets.find((item) => item.budgetId === button.dataset.editBudget);
-        if (budget) startEditBudget(budget);
+        return `
+          <div class="envelope is-budget ${b.overBudget ? 'is-over-budget' : ''} ${isPrimary ? 'is-primary-budget' : ''}">
+            <div class="envelope-top">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="status-pill ${statusClass}">${percentVal}%</span>
+                ${isPrimary ? '<span class="status-pill is-primary-pill">⭐ งบหลัก</span>' : ''}
+              </div>
+              <div class="envelope-actions">
+                <button class="icon-chip-sm" data-edit-budget="${b.budgetId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
+                <button class="icon-chip-sm danger" data-delete-budget="${b.budgetId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <p class="cat truncate" title="${b.category ? escapeHtml(b.category) : 'ทุกหมวด (งบรวม)'}">
+              ${b.category ? escapeHtml(b.category) : 'ทุกหมวด (งบรวม)'}
+            </p>
+            <strong class="amt">${money(b.amount)}</strong>
+            <div class="track"><i class="${barClass}" style="width:${barWidth}%"></i></div>
+            <small>ใช้ไป ${money(b.spent)} · เหลือ ${money(b.remaining)} · ${App.periodLabel[b.period] || b.period}</small>
+          </div>
+        `;
+      }).join('');
+    }
+
+    list.querySelectorAll('[data-edit-budget]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const b = budgets.find((x) => x.budgetId === btn.dataset.editBudget);
+        if (b) openBudgetFormModal(b);
       });
     });
-    list.querySelectorAll('[data-delete-budget]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const row = button.closest('.envelope');
-        const budgetId = button.dataset.deleteBudget;
+    list.querySelectorAll('[data-delete-budget]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('.envelope');
+        const id = btn.dataset.deleteBudget;
         startUndoDelete({
           message: 'ลบงบประมาณแล้ว',
-          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
-          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
+          onHide: () => row?.classList.add('is-pending-delete'),
+          onShow: () => row?.classList.remove('is-pending-delete'),
           onCommit: async () => {
             setLoading(true);
             try {
-              App.data = await api('deleteBudget', App.token, budgetId);
-              if (document.getElementById('budgetEditingId').value === budgetId) resetBudgetForm();
+              App.data = await api('deleteBudget', App.token, id);
               renderAll();
-            } catch (error) {
-              showToast(error.message || 'ลบงบไม่สำเร็จ', true);
-            } finally {
-              setLoading(false);
-            }
+            } finally { setLoading(false); }
           },
         });
       });
@@ -1905,46 +1347,30 @@
         <button data-type="income" type="button">รายรับ</button>
       </div>
       <input id="recType" type="hidden" value="expense">
-      <div>
-        <label class="form-label" for="recAmount">จำนวนเงิน (บาท)</label>
-        <input id="recAmount" class="form-input" type="number" min="1" step="0.01" required>
-      </div>
-      <div>
-        <label class="form-label" for="recCategory">หมวดหมู่</label>
-        <select id="recCategory" class="form-input"></select>
-      </div>
-      <div>
-        <label class="form-label" for="recFrequency">ความถี่</label>
+      <div><label class="form-label" for="recAmount">จำนวนเงิน (บาท)</label><input id="recAmount" class="form-input" type="number" min="1" step="0.01" required></div>
+      <div><label class="form-label" for="recCategory">หมวดหมู่</label><select id="recCategory" class="form-input"></select></div>
+      <div><label class="form-label" for="recFrequency">ความถี่</label>
         <select id="recFrequency" class="form-input">
-          <option value="daily">ทุกวัน</option>
-          <option value="weekly">ทุกสัปดาห์</option>
-          <option value="monthly">ทุกเดือน</option>
+          <option value="daily">ทุกวัน</option><option value="weekly">ทุกสัปดาห์</option><option value="monthly">ทุกเดือน</option>
         </select>
       </div>
-      <div>
-        <label class="form-label" for="recNextRun">เริ่มบันทึกวันที่</label>
-        <input id="recNextRun" class="form-input" type="date" required>
-      </div>
-      <div>
-        <label class="form-label" for="recNote">โน้ต</label>
-        <textarea id="recNote" class="form-input" rows="3"></textarea>
-      </div>
+      <div><label class="form-label" for="recNextRun">เริ่มบันทึกวันที่</label><input id="recNextRun" class="form-input" type="date" required></div>
+      <div><label class="form-label" for="recNote">โน้ต</label><textarea id="recNote" class="form-input" rows="3"></textarea></div>
       <button class="primary-btn w-full" type="submit"><i data-lucide="repeat-2"></i><span>บันทึกรายการประจำ</span></button>
     `;
     document.getElementById('recNextRun').value = today();
     updateCategoryOptions('rec', 'expense');
-    form.querySelectorAll('[data-type]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const type = button.dataset.type;
-        form.querySelectorAll('[data-type]').forEach((item) => item.classList.toggle('active', item === button));
-        document.getElementById('recType').value = type;
-        updateCategoryOptions('rec', type);
+    form.querySelectorAll('[data-type]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        form.querySelectorAll('[data-type]').forEach((i) => i.classList.toggle('active', i === btn));
+        document.getElementById('recType').value = btn.dataset.type;
+        updateCategoryOptions('rec', btn.dataset.type);
       });
     });
   }
 
-  async function submitRecurring(event) {
-    event.preventDefault();
+  async function submitRecurring(e) {
+    e.preventDefault();
     const payload = {
       type: document.getElementById('recType').value,
       amount: Number(document.getElementById('recAmount').value),
@@ -1957,212 +1383,137 @@
     setLoading(true);
     try {
       App.data = await api('saveRecurring', App.token, payload);
-      document.getElementById('recAmount').value = '';
-      document.getElementById('recNote').value = '';
       renderAll();
-      showToast('บันทึกรายการอัตโนมัติแล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกรายการอัตโนมัติไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+      showToast('บันทึกรายการประจำแล้ว');
+    } finally { setLoading(false); }
   }
 
   function renderRecurring() {
     const list = document.getElementById('recurringList');
-    const nextTicket = document.getElementById('recurringNextTicket');
     const items = [...(App.data.recurring || [])].sort((a, b) => String(a.nextRunDate).localeCompare(String(b.nextRunDate)));
-
+    const ticket = document.getElementById('recurringNextTicket');
     if (!items.length) {
-      nextTicket.classList.add('hidden');
+      ticket.classList.add('hidden');
       list.innerHTML = emptyHtml('ยังไม่มีรายการประจำ');
       return;
     }
-
     const [next, ...rest] = items;
-    const daysUntil = Math.max(0, Math.round((parseDateValue_(next.nextRunDate) - parseDateValue_(today())) / 86400000));
-    nextTicket.classList.remove('hidden');
-    document.getElementById('recurringNextDays').textContent = daysUntil;
+    ticket.classList.remove('hidden');
     document.getElementById('recurringNextCat').textContent = next.category;
     document.getElementById('recurringNextSub').textContent = `${dateDisplay(next.nextRunDate)} · ${App.frequencyLabel[next.frequency]}`;
-    const nextAmtEl = document.getElementById('recurringNextAmt');
-    nextAmtEl.textContent = `${next.type === 'income' ? '+' : '-'}${money(next.amount)}`;
-    nextAmtEl.className = 'next-amt ' + (next.type === 'income' ? 'amount-income' : 'amount-expense');
+    document.getElementById('recurringNextAmt').textContent = `${next.type === 'income' ? '+' : '-'}${money(next.amount)}`;
     document.getElementById('recurringNextDelete').dataset.recurringId = next.recurringId;
 
-    list.innerHTML = rest.length ? rest.map((item) => `
+    list.innerHTML = rest.map((item) => `
       <div class="tl-item">
         <span class="d">${dateDisplay(item.nextRunDate)}</span>
-        <span class="c">${escapeHtml(item.category)}<small>${App.frequencyLabel[item.frequency]}${item.note ? ' · ' + escapeHtml(item.note) : ''}</small></span>
-        <span class="a ${item.type === 'income' ? 'amount-income' : 'amount-expense'}">${item.type === 'income' ? '+' : '-'}${money(item.amount)}</span>
-        <button class="icon-chip-sm danger" data-delete-rec="${item.recurringId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
+        <span class="c">${escapeHtml(item.category)}<small>${App.frequencyLabel[item.frequency]}</small></span>
+        <span class="a ${item.type === 'income' ? 'amount-income' : 'amount-expense'}">${money(item.amount)}</span>
+        <button class="icon-chip-sm danger" data-delete-rec="${item.recurringId}" type="button"><i data-lucide="trash-2"></i></button>
       </div>
-    `).join('') : emptyHtml('ไม่มีรายการอื่นแล้ว');
+    `).join('');
 
-    list.querySelectorAll('[data-delete-rec]').forEach((button) => {
-      button.addEventListener('click', () => {
-        removeRecurring(button.dataset.deleteRec, button.closest('.tl-item'));
-      });
+    list.querySelectorAll('[data-delete-rec]').forEach((b) => {
+      b.addEventListener('click', () => removeRecurring(b.dataset.deleteRec, b.closest('.tl-item')));
     });
+    renderIcons();
   }
 
   function deleteNextRecurring() {
     const id = document.getElementById('recurringNextDelete').dataset.recurringId;
-    if (!id) return;
-    removeRecurring(id, document.getElementById('recurringNextTicket'));
+    if (id) removeRecurring(id, document.getElementById('recurringNextTicket'));
   }
 
-  function removeRecurring(recurringId, rowEl) {
+  function removeRecurring(id, el) {
     startUndoDelete({
       message: 'ลบรายการประจำแล้ว',
-      onHide: () => { if (rowEl) rowEl.classList.add('is-pending-delete'); },
-      onShow: () => { if (rowEl) rowEl.classList.remove('is-pending-delete'); },
+      onHide: () => el?.classList.add('is-pending-delete'),
+      onShow: () => el?.classList.remove('is-pending-delete'),
       onCommit: async () => {
         setLoading(true);
         try {
-          App.data = await api('deleteRecurring', App.token, recurringId);
+          App.data = await api('deleteRecurring', App.token, id);
           renderAll();
-        } catch (error) {
-          showToast(error.message || 'ลบรายการประจำไม่สำเร็จ', true);
-        } finally {
-          setLoading(false);
-        }
+        } finally { setLoading(false); }
       },
     });
   }
 
-  function renderSavingsGoalIconPicker(selectedIcon) {
-    const picker = document.getElementById('savingsGoalIconPicker');
-    const active = selectedIcon || 'piggy-bank';
-    picker.innerHTML = SAVINGS_ICONS.map((icon) => `
-      <button type="button" data-goal-icon="${icon}" class="${icon === active ? 'active' : ''}" title="${icon}">
-        <i data-lucide="${icon}"></i>
-      </button>
-    `).join('');
-    picker.querySelectorAll('[data-goal-icon]').forEach((button) => {
-      button.addEventListener('click', () => {
-        document.getElementById('savingsGoalIcon').value = button.dataset.goalIcon;
-        picker.querySelectorAll('[data-goal-icon]').forEach((item) => item.classList.toggle('active', item === button));
-      });
-    });
-  }
-
   function openSavingsGoalFormModal(goal) {
-    document.getElementById('savingsGoalFormModalTitle').textContent = goal ? 'แก้ไขเป้าหมายการออม' : 'เพิ่มเป้าหมายการออม';
     document.getElementById('savingsGoalEditingId').value = goal ? goal.savingsGoalId : '';
     document.getElementById('savingsGoalName').value = goal ? goal.name : '';
-    document.getElementById('savingsGoalTarget').value = goal && goal.targetAmount ? goal.targetAmount : '';
-    document.getElementById('savingsGoalNote').value = goal ? (goal.note || '') : '';
-    document.getElementById('savingsGoalIcon').value = goal ? (goal.icon || 'piggy-bank') : 'piggy-bank';
-    renderSavingsGoalIconPicker(document.getElementById('savingsGoalIcon').value);
-    document.getElementById('savingsGoalSubmitLabel').textContent = goal ? 'บันทึกการแก้ไข' : 'บันทึกเป้าหมาย';
-    document.getElementById('savingsGoalCancelEdit').classList.toggle('hidden', !goal);
+    document.getElementById('savingsGoalTarget').value = goal?.targetAmount || '';
+    document.getElementById('savingsGoalNote').value = goal?.note || '';
+    document.getElementById('savingsGoalIcon').value = goal?.icon || 'piggy-bank';
+    const picker = document.getElementById('savingsGoalIconPicker');
+    picker.innerHTML = SAVINGS_ICONS.map((ic) => `
+      <button type="button" data-goal-icon="${ic}" class="${ic === (goal?.icon || 'piggy-bank') ? 'active' : ''}"><i data-lucide="${ic}"></i></button>
+    `).join('');
+    picker.querySelectorAll('[data-goal-icon]').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.getElementById('savingsGoalIcon').value = b.dataset.goalIcon;
+        picker.querySelectorAll('[data-goal-icon]').forEach((i) => i.classList.toggle('active', i === b));
+      });
+    });
     document.getElementById('savingsGoalFormModal').classList.remove('hidden');
-    trackModalOpen('savingsGoalFormModal', '#savingsGoalName');
+    trackModalOpen('savingsGoalFormModal');
     renderIcons();
   }
 
   function closeSavingsGoalFormModal() {
-    const modal = document.getElementById('savingsGoalFormModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    document.getElementById('savingsGoalFormModal').classList.add('hidden');
     trackModalClose();
-    document.getElementById('savingsGoalForm').reset();
-    document.getElementById('savingsGoalEditingId').value = '';
-    document.getElementById('savingsGoalIcon').value = 'piggy-bank';
   }
 
-  async function submitSavingsGoal(event) {
-    event.preventDefault();
+  async function submitSavingsGoal(e) {
+    e.preventDefault();
     const payload = {
       name: document.getElementById('savingsGoalName').value,
       targetAmount: Number(document.getElementById('savingsGoalTarget').value || 0),
       note: document.getElementById('savingsGoalNote').value,
       icon: document.getElementById('savingsGoalIcon').value || 'piggy-bank',
     };
-    const editingId = document.getElementById('savingsGoalEditingId').value;
-    if (editingId) payload.savingsGoalId = editingId;
+    const id = document.getElementById('savingsGoalEditingId').value;
+    if (id) payload.savingsGoalId = id;
     setLoading(true);
     try {
       App.data = await api('saveSavingsGoal', App.token, payload);
       closeSavingsGoalFormModal();
       renderAll();
-      showToast(editingId ? 'แก้ไขเป้าหมายแล้ว' : 'เพิ่มเป้าหมายการออมแล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกเป้าหมายไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+      showToast('บันทึกเป้าหมายการออมแล้ว');
+    } finally { setLoading(false); }
   }
 
-  function removeSavingsGoal(savingsGoalId, triggerEl) {
-    const row = triggerEl ? triggerEl.closest('.envelope') : null;
-    startUndoDelete({
-      message: 'ลบเป้าหมายการออมแล้ว',
-      onHide: () => { if (row) row.classList.add('is-pending-delete'); },
-      onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
-      onCommit: async () => {
-        setLoading(true);
-        try {
-          App.data = await api('deleteSavingsGoal', App.token, savingsGoalId);
-          renderAll();
-        } catch (error) {
-          showToast(error.message || 'ลบเป้าหมายไม่สำเร็จ', true);
-        } finally {
-          setLoading(false);
-        }
-      },
+  function setSavingsDirection(dir) {
+    document.querySelectorAll('#savingsLogForm [data-savings-direction]').forEach((b) => b.classList.toggle('active', b.dataset.savingsDirection === dir));
+    document.getElementById('savingsLogDirection').value = dir;
+    const chips = SAVINGS_QUICK_AMOUNTS.map((v) => `<button type="button" class="quick-amount-chip" data-quick="${v}">+${v}</button>`);
+    document.getElementById('savingsLogQuickAmounts').innerHTML = chips.join('');
+    document.querySelectorAll('[data-quick]').forEach((b) => {
+      b.addEventListener('click', () => { document.getElementById('savingsLogAmount').value = b.dataset.quick; });
     });
   }
 
-  function setSavingsDirection(direction) {
-    document.querySelectorAll('#savingsLogForm [data-savings-direction]').forEach((item) => {
-      item.classList.toggle('active', item.dataset.savingsDirection === direction);
-    });
-    document.getElementById('savingsLogDirection').value = direction;
-    document.getElementById('savingsLogModalTitle').textContent = direction === 'withdraw' ? 'ถอนเงินออม' : 'ฝากเงินออม';
-    renderSavingsQuickAmounts(direction);
-  }
-
-  function renderSavingsQuickAmounts(direction) {
-    const wrap = document.getElementById('savingsLogQuickAmounts');
-    const goal = App.savingsLogModalGoal;
-    const chips = SAVINGS_QUICK_AMOUNTS.map((value) => `<button type="button" class="quick-amount-chip" data-quick-amount="${value}">+${value.toLocaleString('th-TH')}</button>`);
-    if (direction === 'withdraw' && goal && goal.saved > 0) {
-      chips.push(`<button type="button" class="quick-amount-chip is-max" data-quick-amount="${goal.saved}">ถอนทั้งหมด</button>`);
-    }
-    wrap.innerHTML = chips.join('');
-    wrap.querySelectorAll('[data-quick-amount]').forEach((button) => {
-      button.addEventListener('click', () => {
-        document.getElementById('savingsLogAmount').value = button.dataset.quickAmount;
-      });
-    });
-  }
-
-  function openSavingsLogModal(goal, direction) {
+  function openSavingsLogModal(goal, dir) {
     App.savingsLogModalGoal = goal;
     document.getElementById('savingsLogGoalId').value = goal.savingsGoalId;
-    document.getElementById('savingsLogGoalName').textContent =
-      `${goal.name} · ออมแล้ว ${money(goal.saved)}${goal.targetAmount ? ' จากเป้า ' + money(goal.targetAmount) : ''}`;
+    document.getElementById('savingsLogGoalName').textContent = `${goal.name} (ออมแล้ว ${money(goal.saved)})`;
     document.getElementById('savingsLogAmount').value = '';
     document.getElementById('savingsLogNote').value = '';
     document.getElementById('savingsLogDate').value = today();
-    setSavingsDirection(direction || 'deposit');
+    setSavingsDirection(dir || 'deposit');
     document.getElementById('savingsLogModal').classList.remove('hidden');
-    trackModalOpen('savingsLogModal', '#savingsLogAmount');
+    trackModalOpen('savingsLogModal');
     renderIcons();
   }
 
   function closeSavingsLogModal() {
-    const modal = document.getElementById('savingsLogModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    modal.classList.add('hidden');
+    document.getElementById('savingsLogModal').classList.add('hidden');
     trackModalClose();
-    App.savingsLogModalGoal = null;
   }
 
-  async function submitSavingsLog(event) {
-    event.preventDefault();
+  async function submitSavingsLog(e) {
+    e.preventDefault();
     const payload = {
       savingsGoalId: document.getElementById('savingsLogGoalId').value,
       direction: document.getElementById('savingsLogDirection').value,
@@ -2171,531 +1522,334 @@
       date: document.getElementById('savingsLogDate').value,
     };
     setLoading(true);
-    const prevCompletedIds = ((App.data && App.data.savingsGoals) || [])
-      .filter((goal) => goal.completed)
-      .map((goal) => goal.savingsGoalId);
     try {
       App.data = await api('saveSavingsLog', App.token, payload);
       closeSavingsLogModal();
       renderAll();
-      const justCompletedGoal = (App.data.savingsGoals || [])
-        .find((goal) => goal.savingsGoalId === payload.savingsGoalId && goal.completed && prevCompletedIds.indexOf(goal.savingsGoalId) < 0);
-      if (payload.direction !== 'withdraw' && justCompletedGoal) {
-        showToast(`🎉 บรรลุเป้าหมาย "${justCompletedGoal.name}" แล้ว!`);
-        celebrateSavingsGoal();
-      } else {
-        showToast(payload.direction === 'withdraw' ? 'ถอนเงินออมแล้ว' : 'ฝากเงินออมแล้ว');
-      }
-    } catch (error) {
-      showToast(error.message || 'บันทึกไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function celebrateSavingsGoal() {
-    const colors = ['#3f6b52', '#a97a24', '#a03f2c', '#2c4c3a', '#c4635a'];
-    const layer = document.createElement('div');
-    layer.className = 'confetti-layer';
-    for (let i = 0; i < 60; i++) {
-      const piece = document.createElement('span');
-      piece.className = 'confetti-piece';
-      piece.style.left = Math.random() * 100 + 'vw';
-      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-      piece.style.animationDelay = (Math.random() * 0.4) + 's';
-      piece.style.animationDuration = (1.1 + Math.random() * 0.9) + 's';
-      layer.appendChild(piece);
-    }
-    document.body.appendChild(layer);
-    setTimeout(() => layer.remove(), 2600);
-  }
-
-  function removeSavingsLog(savingsLogId, triggerEl) {
-    const row = triggerEl ? triggerEl.closest('.transaction-row') : null;
-    startUndoDelete({
-      message: 'ลบรายการแล้ว',
-      onHide: () => { if (row) row.classList.add('is-pending-delete'); },
-      onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
-      onCommit: async () => {
-        setLoading(true);
-        try {
-          App.data = await api('deleteSavingsLog', App.token, savingsLogId);
-          renderAll();
-        } catch (error) {
-          showToast(error.message || 'ลบรายการไม่สำเร็จ', true);
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  }
-
-  function savingsLogRowHtml(log, goalName) {
-    const isDeposit = log.direction !== 'withdraw';
-    const amount = `${isDeposit ? '+' : '-'}${money(log.amount)}`;
-    const note = log.note ? `<p class="truncate text-xs text-slate-500 dark:text-slate-400">${escapeHtml(log.note)}</p>` : '';
-    return `
-      <div class="transaction-row">
-        <div class="flex min-w-0 items-center gap-3">
-          <div class="transaction-icon ${isDeposit ? 'income' : 'expense'}">
-            <i data-lucide="${isDeposit ? 'arrow-down-to-line' : 'arrow-up-from-line'}"></i>
-          </div>
-          <div class="min-w-0">
-            <p class="truncate font-extrabold">${escapeHtml(goalName || 'เป้าหมายที่ถูกลบ')}</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">${dateDisplay(log.date)}</p>
-            ${note}
-          </div>
-        </div>
-        <div class="flex shrink-0 items-center gap-2">
-          <strong class="${isDeposit ? 'amount-income' : 'amount-expense'}">${amount}</strong>
-          <button class="ghost-icon" data-delete-savings-log="${log.savingsLogId}" type="button" title="ลบรายการ">
-            <i data-lucide="trash-2"></i>
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  function goalRingBadgeHtml(goal) {
-    const circumference = 2 * Math.PI * 16;
-    const ratio = goal.targetAmount ? Math.max(0, Math.min(1, goal.ratio)) : 0;
-    const offset = circumference * (1 - ratio);
-    const statusClass = goal.completed ? 'completed' : (goal.ratio >= 0.8 ? 'warning' : '');
-    return `
-      <div class="goal-ring-badge ${statusClass}">
-        <svg viewBox="0 0 36 36">
-          <circle class="ring-track" cx="18" cy="18" r="16"></circle>
-          <circle class="ring-fill" cx="18" cy="18" r="16" style="stroke-dasharray:${circumference};stroke-dashoffset:${goal.targetAmount ? offset : circumference}"></circle>
-        </svg>
-        <span class="ring-icon-bg"></span>
-        <span class="ring-icon"><i data-lucide="${goal.icon || 'piggy-bank'}"></i></span>
-      </div>
-    `;
-  }
-
-  function sortSavingsGoals(goals) {
-    const sorted = goals.slice();
-    if (App.savingsSort === 'progress') {
-      sorted.sort((a, b) => {
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        return b.ratio - a.ratio;
-      });
-    } else if (App.savingsSort === 'name') {
-      sorted.sort((a, b) => a.name.localeCompare(b.name, 'th'));
-    }
-    return sorted;
+      showToast(payload.direction === 'withdraw' ? 'ถอนเงินออมแล้ว' : 'ฝากเงินออมแล้ว');
+    } finally { setLoading(false); }
   }
 
   function renderSavings() {
-    const summary = App.data.savingsSummary || { totalSaved: 0, availableBalance: 0, totalTarget: 0, goalsCount: 0, completedCount: 0 };
-    document.getElementById('savingsTotalSaved').textContent = money(summary.totalSaved);
-    const balanceEl = document.getElementById('savingsAvailableBalance');
-    balanceEl.textContent = money(summary.availableBalance);
-    balanceEl.classList.toggle('is-negative', summary.availableBalance < 0);
-    document.getElementById('savingsGoalsCount').textContent = `${summary.goalsCount} เป้าหมาย`;
-    document.getElementById('savingsCompletedCount').textContent = `${summary.completedCount} เป้าหมาย`;
-
-    const heroRatio = summary.totalTarget > 0 ? Math.max(0, Math.min(1, summary.totalSaved / summary.totalTarget)) : 0;
-    const heroCircumference = 2 * Math.PI * 52;
-    document.getElementById('savingsHeroRingFill').style.strokeDasharray = heroCircumference;
-    document.getElementById('savingsHeroRingFill').style.strokeDashoffset = heroCircumference * (1 - heroRatio);
-    document.getElementById('savingsHeroRingPercent').textContent = summary.totalTarget > 0 ? Math.round(heroRatio * 100) + '%' : '—';
+    const s = App.data.savingsSummary || {};
+    document.getElementById('savingsTotalSaved').textContent = money(s.totalSaved);
+    document.getElementById('savingsAvailableBalance').textContent = money(s.availableBalance);
+    document.getElementById('savingsGoalsCount').textContent = `${s.goalsCount || 0} เป้าหมาย`;
+    document.getElementById('savingsCompletedCount').textContent = `${s.completedCount || 0} เป้าหมาย`;
 
     const goals = App.data.savingsGoals || [];
-
-    const goalFilterSelect = document.getElementById('savingsLogGoalFilter');
-    const currentGoalFilter = App.savingsLogFilter.goalId;
-    goalFilterSelect.innerHTML = '<option value="">ทุกเป้าหมาย</option>' +
-      goals.map((goal) => `<option value="${goal.savingsGoalId}">${escapeHtml(goal.name)}</option>`).join('');
-    goalFilterSelect.value = currentGoalFilter;
-
-    const goalList = document.getElementById('savingsGoalList');
-    const sortedGoals = sortSavingsGoals(goals);
-    goalList.innerHTML = sortedGoals.length ? sortedGoals.map((goal) => {
-      const progressHtml = goal.targetAmount
-        ? `<small>เหลืออีก ${money(goal.remaining)} จากเป้า ${money(goal.targetAmount)}</small>`
-        : `<small>${goal.note ? escapeHtml(goal.note) : 'ยังไม่ได้ตั้งเป้าหมาย'}</small>`;
-      // เป้าหมายที่สำเร็จแล้วใช้โทนเขียวเฉลิมฉลองของตัวเองอยู่แล้ว เลยไม่ใส่สีสุ่มทับ กันดูรกตา
-      const accentColor = goal.completed ? '' : colorForSeed(goal.savingsGoalId);
-      const accentStyle = accentColor ? ` style="--accent:${accentColor}"` : '';
-      return `
-      <div class="envelope is-savings ${goal.completed ? 'is-goal-complete' : ''}" data-savings-goal-id="${goal.savingsGoalId}"${accentStyle}>
+    const list = document.getElementById('savingsGoalList');
+    list.innerHTML = goals.length ? goals.map((g) => `
+      <div class="envelope is-savings ${g.completed ? 'is-goal-complete' : ''}" style="--accent:${colorForSeed(g.savingsGoalId)}">
         <div class="envelope-top">
-          <span class="status-pill">${goal.completed ? 'สำเร็จแล้ว 🎉' : (goal.targetAmount ? goal.percent + '%' : 'ไม่มีเป้าหมาย')}</span>
+          <span class="status-pill">${g.completed ? 'สำเร็จแล้ว 🎉' : g.targetAmount ? g.percent + '%' : 'ไม่มีเป้าหมาย'}</span>
           <div class="envelope-actions">
-            <button class="icon-chip-sm" data-edit-savings-goal="${goal.savingsGoalId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
-            <button class="icon-chip-sm danger" data-delete-savings-goal="${goal.savingsGoalId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>
+            <button class="icon-chip-sm" data-edit-goal="${g.savingsGoalId}"><i data-lucide="pencil"></i></button>
+            <button class="icon-chip-sm danger" data-delete-goal="${g.savingsGoalId}"><i data-lucide="trash-2"></i></button>
           </div>
         </div>
-        <div class="envelope-head-row">
-          ${goalRingBadgeHtml(goal)}
-          <div class="min-w-0">
-            <p class="cat truncate">${escapeHtml(goal.name)}</p>
-            <strong class="amt">${money(goal.saved)}</strong>
-          </div>
-        </div>
-        ${progressHtml}
+        <p class="cat truncate">${escapeHtml(g.name)}</p>
+        <strong class="amt">${money(g.saved)}</strong>
+        <small>${g.targetAmount ? 'เป้าหมาย ' + money(g.targetAmount) : g.note || ''}</small>
         <div class="envelope-actions-row">
-          <button class="mini-btn" data-deposit-goal="${goal.savingsGoalId}" type="button"><i data-lucide="arrow-down-to-line"></i>ฝาก</button>
-          <button class="mini-btn is-withdraw" data-withdraw-goal="${goal.savingsGoalId}" type="button"><i data-lucide="arrow-up-from-line"></i>ถอน</button>
+          <button class="mini-btn" data-dep-goal="${g.savingsGoalId}"><i data-lucide="arrow-down-to-line"></i>ฝาก</button>
+          <button class="mini-btn is-withdraw" data-with-goal="${g.savingsGoalId}"><i data-lucide="arrow-up-from-line"></i>ถอน</button>
         </div>
       </div>
-    `;
-    }).join('') : `<div class="empty-state" style="width:100%;">
-        ยังไม่มีเป้าหมายการออม — เริ่มต้นเก็บเงินเพื่อสิ่งที่ตั้งใจไว้กันเลย
-        <div style="margin-top:.85rem;"><button class="secondary-btn" type="button" data-open-savings-goal-form><i data-lucide="plus"></i><span>เพิ่มเป้าหมายแรก</span></button></div>
-      </div>`;
+    `).join('') : emptyHtml('ยังไม่มีเป้าหมายการออม');
 
-    const emptyGoalCta = goalList.querySelector('[data-open-savings-goal-form]');
-    if (emptyGoalCta) emptyGoalCta.addEventListener('click', () => openSavingsGoalFormModal());
-
-    goalList.querySelectorAll('[data-edit-savings-goal]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const goal = goals.find((item) => item.savingsGoalId === button.dataset.editSavingsGoal);
-        if (goal) openSavingsGoalFormModal(goal);
-      });
-    });
-    goalList.querySelectorAll('[data-delete-savings-goal]').forEach((button) => {
-      button.addEventListener('click', () => removeSavingsGoal(button.dataset.deleteSavingsGoal, button));
-    });
-    goalList.querySelectorAll('[data-deposit-goal]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const goal = goals.find((item) => item.savingsGoalId === button.dataset.depositGoal);
-        if (goal) openSavingsLogModal(goal, 'deposit');
-      });
-    });
-    goalList.querySelectorAll('[data-withdraw-goal]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const goal = goals.find((item) => item.savingsGoalId === button.dataset.withdrawGoal);
-        if (goal) openSavingsLogModal(goal, 'withdraw');
+    list.querySelectorAll('[data-edit-goal]').forEach((b) => b.addEventListener('click', () => openSavingsGoalFormModal(goals.find((g) => g.savingsGoalId === b.dataset.editGoal))));
+    list.querySelectorAll('[data-dep-goal]').forEach((b) => b.addEventListener('click', () => openSavingsLogModal(goals.find((g) => g.savingsGoalId === b.dataset.depGoal), 'deposit')));
+    list.querySelectorAll('[data-with-goal]').forEach((b) => b.addEventListener('click', () => openSavingsLogModal(goals.find((g) => g.savingsGoalId === b.dataset.withGoal), 'withdraw')));
+    list.querySelectorAll('[data-delete-goal]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const id = b.dataset.deleteGoal;
+        startUndoDelete({
+          message: 'ลบเป้าหมายแล้ว',
+          onCommit: async () => {
+            setLoading(true);
+            try {
+              App.data = await api('deleteSavingsGoal', App.token, id);
+              renderAll();
+            } finally { setLoading(false); }
+          },
+        });
       });
     });
 
-    const goalNameById = {};
-    goals.forEach((goal) => { goalNameById[goal.savingsGoalId] = goal.name; });
+    const goalMap = {};
+    goals.forEach((g) => { goalMap[g.savingsGoalId] = g.name; });
     const logList = document.getElementById('savingsLogList');
-    const filter = App.savingsLogFilter;
-    const logs = (App.data.savingsLogs || []).filter((log) => {
-      if (filter.goalId && log.savingsGoalId !== filter.goalId) return false;
-      if (filter.direction && log.direction !== filter.direction) return false;
-      if (filter.search) {
-        const haystack = `${goalNameById[log.savingsGoalId] || ''} ${log.note || ''}`.toLowerCase();
-        if (haystack.indexOf(filter.search) < 0) return false;
-      }
-      return true;
-    });
-    logList.innerHTML = logs.length
-      ? logs.map((log) => savingsLogRowHtml(log, goalNameById[log.savingsGoalId])).join('')
-      : emptyHtml((App.data.savingsLogs || []).length ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีประวัติการฝาก-ถอน');
-    logList.querySelectorAll('[data-delete-savings-log]').forEach((button) => {
-      button.addEventListener('click', () => removeSavingsLog(button.dataset.deleteSavingsLog, button));
-    });
+    const logs = App.data.savingsLogs || [];
+    logList.innerHTML = logs.length ? logs.map((l) => `
+      <div class="transaction-row">
+        <div class="flex items-center gap-3">
+          <div class="transaction-icon ${l.direction === 'withdraw' ? 'expense' : 'income'}">
+            <i data-lucide="${l.direction === 'withdraw' ? 'arrow-up-from-line' : 'arrow-down-to-line'}"></i>
+          </div>
+          <div>
+            <p class="font-bold">${escapeHtml(goalMap[l.savingsGoalId] || 'เงินออม')}</p>
+            <p class="text-xs text-slate-500">${dateDisplay(l.date)} ${l.note ? '· ' + escapeHtml(l.note) : ''}</p>
+          </div>
+        </div>
+        <strong>${l.direction === 'withdraw' ? '-' : '+'}${money(l.amount)}</strong>
+      </div>
+    `).join('') : emptyHtml('ยังไม่มีประวัติการฝากถอน');
 
     renderIcons();
   }
 
   function renderAnalytics() {
     if (!App.data) return;
-    renderCompareCard('dailyCompare', 'วันนี้', App.data.analytics.daily);
-    renderCompareCard('weeklyCompare', 'สัปดาห์นี้', App.data.analytics.weekly);
-    renderCompareCard('monthlyCompare', 'เดือนนี้', App.data.analytics.monthly);
-    drawExpensePie();
-    renderCategoryBreakdown();
-    drawPeriodBar();
-    renderBudgetOverspendStats();
-    renderIcons();
-  }
+    syncChartTheme();
+    const an = App.data.analytics || {};
+    const daily = an.daily || { expenseChangePercent: 0, expense: 0, balance: 0, income: 0 };
+    const weekly = an.weekly || { expenseChangePercent: 0, expense: 0, balance: 0, income: 0 };
+    const monthly = an.monthly || { expenseChangePercent: 0, expense: 0, balance: 0, income: 0 };
 
-  function renderBudgetOverspendStats() {
-    const wrap = document.getElementById('budgetOverspendList');
-    if (!wrap) return;
-    const budgets = App.data.budgets || [];
-    if (!budgets.length) {
-      wrap.innerHTML = emptyHtml('ยังไม่มีงบประมาณที่ตั้งไว้');
-      return;
+    const renderCard = (id, title, s) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const chg = Number(s.expenseChangePercent || 0);
+      const chgClass = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
+      const chgSign = chg > 0 ? '+' : '';
+      el.innerHTML = `
+        <span class="l">${title}</span>
+        <span class="v ${chgClass}">${chgSign}${chg}%</span>
+        <p class="cap">จ่าย ${money(s.expense)} · เหลือ ${money(s.balance)}</p>
+      `;
+    };
+    renderCard('dailyCompare', 'วันนี้', daily);
+    renderCard('weeklyCompare', 'สัปดาห์นี้', weekly);
+    renderCard('monthlyCompare', 'เดือนนี้', monthly);
+
+    // 1. หมวดหมู่ & สัดส่วนแต่ละหมวด (Category Breakdown & Doughnut Chart)
+    const catList = document.getElementById('categoryBreakdownList');
+    const categories = an.categoryExpense || [];
+    const totalExp = categories.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    if (catList) {
+      if (!categories.length || totalExp <= 0) {
+        catList.innerHTML = emptyHtml('ยังไม่มีรายจ่ายในเดือนนี้');
+      } else {
+        catList.innerHTML = categories.map((item, idx) => {
+          const pct = totalExp > 0 ? Math.round((item.amount / totalExp) * 100) : 0;
+          const color = categoryColorFor(item.category) || CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+          return `
+            <div class="cat-row">
+              <span class="dot" style="background:${color}"></span>
+              <span class="name" title="${escapeHtml(item.category)}">${escapeHtml(item.category)}</span>
+              <span class="amt">${money(item.amount)}</span>
+              <span class="pct">${pct}%</span>
+            </div>
+          `;
+        }).join('');
+      }
     }
 
-    wrap.innerHTML = budgets.map((budget) => {
-      const stats = budget.overspend || { totalCycles: 0, overCount: 0, overProbabilityPercent: 0, totalOverAmount: 0, avgOverPercent: 0, avgSpent: 0 };
-      const name = budget.category ? escapeHtml(budget.category) : 'ทุกหมวด';
-      const periodLabel = App.periodLabel[budget.period] || budget.period;
-      // งบรายวัน/รายสัปดาห์ดูสถิติย้อนหลัง 1 เดือน ส่วนงบรายเดือนดูย้อนหลัง 1 ปี (ดูฝั่ง Code.js: computeBudgetOverspendStats_)
-      const windowLabel = budget.period === 'monthly' ? 'ใน 1 ปีที่ผ่านมา' : 'ใน 1 เดือนที่ผ่านมา';
-
-      if (!stats.totalCycles) {
-        return `
-          <div class="overspend-card">
-            <div class="overspend-card-head">
-              <span class="name">${name} <span class="status-pill">${periodLabel}</span></span>
-            </div>
-            <p class="overspend-note">ยังไม่มีรอบงบประมาณที่ครบกำหนด${windowLabel} รอครบรอบแรกก่อนถึงจะเริ่มเก็บสถิติได้</p>
-          </div>
-        `;
+    const pieCtx = document.getElementById('expensePie');
+    if (pieCtx) {
+      if (App.charts.pie) App.charts.pie.destroy();
+      if (categories.length && totalExp > 0) {
+        const pieColors = categories.map((i, idx) => categoryColorFor(i.category) || CATEGORY_COLORS[idx % CATEGORY_COLORS.length]);
+        App.charts.pie = new Chart(pieCtx, {
+          type: 'doughnut',
+          data: {
+            labels: categories.map((i) => i.category),
+            datasets: [{
+              data: categories.map((i) => i.amount),
+              backgroundColor: pieColors,
+              borderWidth: 2,
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff',
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${ctx.label}: ${money(ctx.parsed)} (${Math.round((ctx.parsed / totalExp) * 100)}%)`,
+                },
+              },
+            },
+          },
+        });
+      } else {
+        App.charts.pie = new Chart(pieCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['ยังไม่มีข้อมูลรายจ่าย'],
+            datasets: [{
+              data: [1],
+              backgroundColor: [getComputedStyle(document.documentElement).getPropertyValue('--line-soft').trim() || '#e8dfcd'],
+              borderWidth: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false },
+            },
+          },
+        });
       }
+    }
 
-      // เคยเกินงบอย่างน้อย 1 ครั้งเท่านั้นถึงจะแสดงสถิติแบบเต็ม ส่วนที่ยังไม่เคยเกินโชว์แค่บรรทัดสั้น ๆ
-      if (!stats.overCount) {
-        return `
-          <div class="overspend-card">
-            <div class="overspend-card-head">
-              <span class="name">${name} <span class="status-pill">${periodLabel}</span></span>
-              <span class="status-pill ok">ยังไม่เกินงบ</span>
+    // 2. แนวโน้มรายรับเทียบรายจ่าย (Income vs Expense Bar Chart)
+    const barCtx = document.getElementById('periodBar');
+    if (barCtx) {
+      if (App.charts.bar) App.charts.bar.destroy();
+      App.charts.bar = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: ['วันนี้', 'สัปดาห์นี้', 'เดือนนี้'],
+          datasets: [
+            { label: 'รายรับ', data: [daily.income, weekly.income, monthly.income], backgroundColor: '#3f6b52' },
+            { label: 'รายจ่าย', data: [daily.expense, weekly.expense, monthly.expense], backgroundColor: '#a03f2c' },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', align: 'end' },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${money(ctx.parsed.y)}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // 3. สถิติการใช้เงินเกินงบประมาณ (Overspending Statistics)
+    const overList = document.getElementById('budgetOverspendList');
+    if (overList) {
+      const budgets = (an && an.budgetOverspend && an.budgetOverspend.length) ? an.budgetOverspend : (App.data.budgets || []);
+      if (!budgets.length) {
+        overList.innerHTML = emptyHtml('ยังไม่ได้ตั้งงบประมาณ สามารถไปตั้งงบประมาณได้ที่แท็บ "งบประมาณ"');
+      } else {
+        overList.innerHTML = budgets.map((b) => {
+          const ov = b.overspend || { totalCycles: 0, overCount: 0, overProbabilityPercent: 0, totalOverAmount: 0, avgOverPercent: 0, avgSpent: 0 };
+          const isOver = ov.overCount > 0 || b.overBudget;
+          const periodName = App.periodLabel[b.period] || b.period;
+          const catName = b.category ? escapeHtml(b.category) : 'ทุกหมวดหมู่ (งบรวม)';
+          const statusPill = isOver
+            ? `<span class="status-pill is-danger-pill">เกินงบ ${ov.overCount}/${ov.totalCycles || 1} รอบ</span>`
+            : `<span class="status-pill is-ok-pill">อยู่ในงบ (${ov.totalCycles || 0} รอบ)</span>`;
+
+          return `
+            <div class="overspend-card">
+              <div class="overspend-card-head">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="name">${catName}</span>
+                  <span class="status-pill">${periodName} · วงเงิน ${money(b.amount)}</span>
+                </div>
+                ${statusPill}
+              </div>
+              <div class="overspend-grid">
+                <div class="overspend-stat">
+                  <span class="lbl">โอกาสเกินงบ</span>
+                  <span class="val ${ov.overProbabilityPercent > 0 ? 'danger' : ''}">${ov.overProbabilityPercent}%</span>
+                </div>
+                <div class="overspend-stat">
+                  <span class="lbl">ยอดเกินสะสม</span>
+                  <span class="val ${ov.totalOverAmount > 0 ? 'danger' : ''}">${money(ov.totalOverAmount)}</span>
+                </div>
+                <div class="overspend-stat">
+                  <span class="lbl">เกินเฉลี่ย / รอบ</span>
+                  <span class="val ${ov.avgOverPercent > 0 ? 'danger' : ''}">${ov.avgOverPercent > 0 ? '+' + ov.avgOverPercent + '%' : '0%'}</span>
+                </div>
+                <div class="overspend-stat">
+                  <span class="lbl">ใช้จ่ายเฉลี่ย</span>
+                  <span class="val">${money(ov.avgSpent || b.spent)}</span>
+                </div>
+              </div>
+              <p class="overspend-note">
+                ${ov.totalCycles > 0 
+                  ? `คำนวณจากประวัติการใช้จ่ายย้อนหลัง ${ov.totalCycles} รอบ (รอบละ ${periodName} วงเงิน ${money(b.amount)})`
+                  : `รอบปัจจุบัน (${periodName}): ใช้ไปแล้ว ${money(b.spent)} จากงบ ${money(b.amount)} (${b.percent || 0}%)`}
+              </p>
             </div>
-            <p class="overspend-note">ยังไม่เคยเกินงบใน ${stats.totalCycles} รอบที่ผ่านมา${windowLabel} (วงเงิน ${money(budget.amount)})</p>
-          </div>
-        `;
+          `;
+        }).join('');
       }
-
-      const pillClass = 'danger';
-      const pillText = `เกินงบ ${stats.overCount}/${stats.totalCycles} รอบ`;
-
-      return `
-        <div class="overspend-card">
-          <div class="overspend-card-head">
-            <span class="name">${name}</span>
-            <span class="status-pill ${pillClass}">${periodLabel} · ${pillText}</span>
-          </div>
-          <div class="overspend-grid">
-            <div class="overspend-stat">
-              <span class="lbl">จำนวนครั้งที่เกินงบ</span>
-              <span class="val ${stats.overCount ? 'danger' : ''}">${stats.overCount} ครั้ง</span>
-            </div>
-            <div class="overspend-stat">
-              <span class="lbl">ยอดที่เกินสะสม</span>
-              <span class="val ${stats.totalOverAmount ? 'danger' : ''}">${money(stats.totalOverAmount)}</span>
-            </div>
-            <div class="overspend-stat">
-              <span class="lbl">เกินเฉลี่ยต่อรอบที่เกิน</span>
-              <span class="val ${stats.avgOverPercent ? 'danger' : ''}">${stats.avgOverPercent}%</span>
-            </div>
-            <div class="overspend-stat">
-              <span class="lbl">โอกาสใช้เกินงบ</span>
-              <span class="val ${stats.overProbabilityPercent >= 50 ? 'danger' : ''}">${stats.overProbabilityPercent}%</span>
-            </div>
-          </div>
-          <p class="overspend-note">ใช้จ่ายเฉลี่ย ${money(stats.avgSpent)} ต่อรอบ จากทั้งหมด ${stats.totalCycles} รอบ${windowLabel} (วงเงิน ${money(budget.amount)})</p>
-        </div>
-      `;
-    }).join('');
+    }
   }
-
-  const App_categoryPalette = ['#2c4c3a', '#a03f2c', '#a97a24', '#7c7057', '#5f8f74', '#c1785a', '#8a7f5f', '#3f6b52'];
 
   function syncChartTheme() {
     if (typeof Chart === 'undefined') return;
     const styles = getComputedStyle(document.documentElement);
-    Chart.defaults.font.family = "'Sarabun', 'Inter', sans-serif";
     Chart.defaults.color = styles.getPropertyValue('--text-soft').trim() || '#7c7057';
     Chart.defaults.borderColor = styles.getPropertyValue('--line').trim() || '#ddceac';
   }
 
-  function renderCategoryBreakdown() {
-    const list = document.getElementById('categoryBreakdownList');
-    const items = App.data.analytics.categoryExpense || [];
-    if (!list) return;
-    list.innerHTML = categoryRowsHtml(items) || emptyHtml('ยังไม่มีรายจ่ายในช่วงนี้');
-  }
-
-  function categoryRowsHtml(items) {
-    if (!items || !items.length) return '';
-    const total = items.reduce((sum, item) => sum + item.amount, 0) || 1;
-    return items.map((item, index) => `
-      <div class="cat-row">
-        <span class="dot" style="background:${App_categoryPalette[index % App_categoryPalette.length]}"></span>
-        <span class="name">${escapeHtml(item.category)}</span>
-        <span class="amt">${money(item.amount)}</span>
-        <span class="pct">${Math.round((item.amount / total) * 100)}%</span>
-      </div>
-    `).join('');
-  }
-
-  function renderCompareCard(id, title, stat) {
-    const change = stat.expenseChangePercent;
-    const isUp = change > 0;
-    const isDown = change < 0;
-    document.getElementById(id).innerHTML = `
-      <span class="l">${escapeHtml(title)}</span>
-      <span class="v ${isUp ? 'up' : isDown ? 'down' : ''}">${isUp ? '▲' : isDown ? '▼' : '•'} ${Math.abs(change)}%</span>
-      <p class="cap">รายจ่าย ${money(stat.expense)} · คงเหลือ ${money(stat.balance)}</p>
-    `;
-  }
-
-  function drawExpensePie() {
-    const ctx = document.getElementById('expensePie');
-    const items = App.data.analytics.categoryExpense;
-    if (App.charts.expensePie) App.charts.expensePie.destroy();
-    App.charts.expensePie = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: items.map((item) => item.category),
-        datasets: [{
-          data: items.map((item) => item.amount),
-          backgroundColor: App_categoryPalette,
-          borderWidth: 0,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } },
-        },
-        cutout: '62%',
-      },
-    });
-  }
-
-  function drawPeriodBar() {
-    const ctx = document.getElementById('periodBar');
-    const a = App.data.analytics;
-    if (App.charts.periodBar) App.charts.periodBar.destroy();
-    App.charts.periodBar = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['วันนี้', 'สัปดาห์นี้', 'เดือนนี้'],
-        datasets: [
-          { label: 'รายรับ', data: [a.daily.income, a.weekly.income, a.monthly.income], backgroundColor: '#2c4c3a', borderRadius: 6 },
-          { label: 'รายจ่าย', data: [a.daily.expense, a.weekly.expense, a.monthly.expense], backgroundColor: '#a03f2c', borderRadius: 6 },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { grid: { display: false } },
-          y: { beginAtZero: true },
-        },
-        plugins: {
-          legend: { position: 'bottom' },
-        },
-      },
-    });
-  }
-
-  // ============ จัดการหมวดหมู่ (Settings) ============
   function renderCategoryManager() {
     const list = document.getElementById('categoryManagerList');
     if (!list || !App.data.categories) return;
     const type = App.categoryManagerType;
-    const items = (App.data.categories[type] || []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
-
-    list.innerHTML = items.length ? items.map((category, index) => `
-      <div class="category-row" data-category-id="${category.categoryId}">
-        <div class="swatch" style="background:${category.color}"><i data-lucide="${category.icon}"></i></div>
-        <span class="name truncate">${escapeHtml(category.name)}</span>
+    const items = App.data.categories[type] || [];
+    list.innerHTML = items.map((c) => `
+      <div class="category-row">
+        <div class="swatch" style="background:${c.color}"><i data-lucide="${c.icon}"></i></div>
+        <span class="name truncate">${escapeHtml(c.name)}</span>
         <div class="actions">
-          <div class="order-stepper">
-            <button data-move-category="up" data-category-order-id="${category.categoryId}" type="button" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up"></i></button>
-            <button data-move-category="down" data-category-order-id="${category.categoryId}" type="button" title="เลื่อนลง" ${index === items.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down"></i></button>
-          </div>
-          <button class="icon-chip-sm" data-edit-category="${category.categoryId}" type="button" title="แก้ไข"><i data-lucide="pencil"></i></button>
-          ${category.name === 'อื่นๆ' ? '' : `<button class="icon-chip-sm danger" data-delete-category="${category.categoryId}" type="button" title="ลบ"><i data-lucide="trash-2"></i></button>`}
+          <button class="icon-chip-sm" data-edit-cat="${c.categoryId}"><i data-lucide="pencil"></i></button>
+          ${c.name !== 'อื่นๆ' ? `<button class="icon-chip-sm danger" data-del-cat="${c.categoryId}"><i data-lucide="trash-2"></i></button>` : ''}
         </div>
       </div>
-    `).join('') : emptyHtml('ยังไม่มีหมวดหมู่');
+    `).join('');
 
-    list.querySelectorAll('[data-move-category]').forEach((button) => {
-      button.addEventListener('click', () => moveCategory(button.dataset.categoryOrderId, button.dataset.moveCategory));
+    list.querySelectorAll('[data-edit-cat]').forEach((b) => {
+      b.addEventListener('click', () => openCategoryFormModal(items.find((x) => x.categoryId === b.dataset.editCat)));
     });
-    list.querySelectorAll('[data-edit-category]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const category = items.find((item) => item.categoryId === button.dataset.editCategory);
-        if (category) openCategoryFormModal(category);
-      });
-    });
-    list.querySelectorAll('[data-delete-category]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const row = button.closest('.category-row');
-        const categoryId = button.dataset.deleteCategory;
-        startUndoDelete({
-          message: 'ลบหมวดหมู่แล้ว',
-          onHide: () => { if (row) row.classList.add('is-pending-delete'); },
-          onShow: () => { if (row) row.classList.remove('is-pending-delete'); },
-          onCommit: async () => {
-            setLoading(true);
-            try {
-              App.data = await api('deleteCategory', App.token, categoryId);
-              renderAll();
-            } catch (error) {
-              showToast(error.message || 'ลบหมวดหมู่ไม่สำเร็จ', true);
-              renderCategoryManager();
-            } finally {
-              setLoading(false);
-            }
-          },
-        });
+    list.querySelectorAll('[data-del-cat]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        setLoading(true);
+        try {
+          App.data = await api('deleteCategory', App.token, b.dataset.delCat);
+          renderAll();
+        } catch (err) { showToast(err.message, true); }
+        finally { setLoading(false); }
       });
     });
     renderIcons();
   }
 
-  async function moveCategory(categoryId, direction) {
-    const type = App.categoryManagerType;
-    const items = (App.data.categories[type] || []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
-    const index = items.findIndex((item) => item.categoryId === categoryId);
-    if (index < 0) return;
-    const swapWith = direction === 'up' ? index - 1 : index + 1;
-    if (swapWith < 0 || swapWith >= items.length) return;
-
-    const orderedIds = items.map((item) => item.categoryId);
-    [orderedIds[index], orderedIds[swapWith]] = [orderedIds[swapWith], orderedIds[index]];
-
-    setLoading(true);
-    try {
-      App.data = await api('reorderCategories', App.token, type, orderedIds);
-      renderAll();
-    } catch (error) {
-      showToast(error.message || 'จัดลำดับไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function renderCategoryIconPicker(selectedIcon) {
-    const picker = document.getElementById('categoryIconPicker');
-    const active = selectedIcon || 'tag';
-    picker.innerHTML = CATEGORY_ICONS.map((icon) => `
-      <button type="button" data-category-icon-choice="${icon}" class="${icon === active ? 'active' : ''}" title="${icon}">
-        <i data-lucide="${icon}"></i>
-      </button>
+  function openCategoryFormModal(cat) {
+    document.getElementById('categoryEditingId').value = cat ? cat.categoryId : '';
+    document.getElementById('categoryEditingType').value = cat ? cat.type : App.categoryManagerType;
+    document.getElementById('categoryName').value = cat ? cat.name : '';
+    document.getElementById('categoryIcon').value = cat ? cat.icon : 'tag';
+    document.getElementById('categoryColor').value = cat ? cat.color : CATEGORY_COLORS[0];
+    document.getElementById('categoryIconPicker').innerHTML = CATEGORY_ICONS.map((ic) => `
+      <button type="button" data-cic="${ic}" class="${ic === (cat?.icon || 'tag') ? 'active' : ''}"><i data-lucide="${ic}"></i></button>
     `).join('');
-    picker.querySelectorAll('[data-category-icon-choice]').forEach((button) => {
-      button.addEventListener('click', () => {
-        document.getElementById('categoryIcon').value = button.dataset.categoryIconChoice;
-        picker.querySelectorAll('[data-category-icon-choice]').forEach((item) => item.classList.toggle('active', item === button));
-      });
-    });
-  }
-
-  function renderCategoryColorPicker(selectedColor) {
-    const picker = document.getElementById('categoryColorPicker');
-    const active = selectedColor || CATEGORY_COLORS[0];
-    picker.innerHTML = CATEGORY_COLORS.map((color) => `
-      <button type="button" data-category-color-choice="${color}" class="${color === active ? 'active' : ''}" style="background:${color}" title="${color}"></button>
+    document.querySelectorAll('[data-cic]').forEach((b) => b.addEventListener('click', () => {
+      document.getElementById('categoryIcon').value = b.dataset.cic;
+      document.querySelectorAll('[data-cic]').forEach((i) => i.classList.toggle('active', i === b));
+    }));
+    document.getElementById('categoryColorPicker').innerHTML = CATEGORY_COLORS.map((col) => `
+      <button type="button" data-ccol="${col}" class="${col === (cat?.color || CATEGORY_COLORS[0]) ? 'active' : ''}" style="background:${col}"></button>
     `).join('');
-    picker.querySelectorAll('[data-category-color-choice]').forEach((button) => {
-      button.addEventListener('click', () => {
-        document.getElementById('categoryColor').value = button.dataset.categoryColorChoice;
-        picker.querySelectorAll('[data-category-color-choice]').forEach((item) => item.classList.toggle('active', item === button));
-      });
-    });
-  }
-
-  function openCategoryFormModal(category) {
-    document.getElementById('categoryFormModalTitle').textContent = category ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่';
-    document.getElementById('categoryEditingId').value = category ? category.categoryId : '';
-    document.getElementById('categoryEditingType').value = category ? category.type : App.categoryManagerType;
-    document.getElementById('categoryName').value = category ? category.name : '';
-    document.getElementById('categoryIcon').value = category ? category.icon : 'tag';
-    document.getElementById('categoryColor').value = category ? category.color : CATEGORY_COLORS[0];
-    renderCategoryIconPicker(document.getElementById('categoryIcon').value);
-    renderCategoryColorPicker(document.getElementById('categoryColor').value);
-    document.getElementById('categorySubmitLabel').textContent = category ? 'บันทึกการแก้ไข' : 'บันทึกหมวดหมู่';
+    document.querySelectorAll('[data-ccol]').forEach((b) => b.addEventListener('click', () => {
+      document.getElementById('categoryColor').value = b.dataset.ccol;
+      document.querySelectorAll('[data-ccol]').forEach((i) => i.classList.toggle('active', i === b));
+    }));
+    document.getElementById('categoryFormModal').classList.remove('hidden');
+    trackModalOpen('categoryFormModal');
     renderIcons();
   }
 
-  async function submitCategory(event) {
-    event.preventDefault();
+  async function submitCategory(e) {
+    e.preventDefault();
     const payload = {
       categoryId: document.getElementById('categoryEditingId').value,
       type: document.getElementById('categoryEditingType').value,
@@ -2707,70 +1861,42 @@
     try {
       App.data = await api('saveCategory', App.token, payload);
       document.getElementById('categoryFormModal').classList.add('hidden');
-      document.body.classList.remove('modal-open');
-      document.getElementById('categoryForm').reset();
+      trackModalClose();
       renderAll();
       showToast('บันทึกหมวดหมู่แล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกหมวดหมู่ไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ============ ส่งออกข้อมูลเป็น CSV ============
-  function csvEscape_(value) {
-    const str = String(value === undefined || value === null ? '' : value);
-    if (/[",\r\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
-    return str;
+    } finally { setLoading(false); }
   }
 
   function downloadCsv_(filename, rows) {
-    const csv = rows.map((row) => row.map(csvEscape_).join(',')).join('\r\n');
-    // ใส่ BOM นำหน้าเพื่อให้ Excel เปิดอ่านภาษาไทยได้ถูกต้อง ไม่เป็นตัวอักษรมั่ว
+    const csv = rows.map((r) => r.map((c) => `"${String(c || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
   }
 
   function exportTransactionsCsv() {
     const rows = [['วันที่', 'ประเภท', 'หมวดหมู่', 'จำนวนเงิน', 'โน้ต']];
-    (App.data.transactions || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((tx) => {
-      rows.push([tx.date, tx.type === 'income' ? 'รายรับ' : 'รายจ่าย', tx.category, tx.amount, tx.note || '']);
-    });
-    downloadCsv_(`finnote-transactions-${today()}.csv`, rows);
-    showToast('ดาวน์โหลดไฟล์ CSV แล้ว');
+    (App.data.transactions || []).forEach((t) => rows.push([t.date, t.type === 'income' ? 'รายรับ' : 'รายจ่าย', t.category, t.amount, t.note || '']));
+    downloadCsv_(`finnote-tx-${today()}.csv`, rows);
   }
 
   function exportSavingsCsv() {
-    const goalNameById = {};
-    (App.data.savingsGoals || []).forEach((goal) => { goalNameById[goal.savingsGoalId] = goal.name; });
-    const rows = [['วันที่', 'เป้าหมาย', 'ประเภท', 'จำนวนเงิน', 'โน้ต']];
-    (App.data.savingsLogs || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((log) => {
-      rows.push([log.date, goalNameById[log.savingsGoalId] || '', log.direction === 'withdraw' ? 'ถอน' : 'ฝาก', log.amount, log.note || '']);
-    });
+    const rows = [['วันที่', 'ประเภท', 'จำนวนเงิน', 'โน้ต']];
+    (App.data.savingsLogs || []).forEach((l) => rows.push([l.date, l.direction, l.amount, l.note || '']));
     downloadCsv_(`finnote-savings-${today()}.csv`, rows);
-    showToast('ดาวน์โหลดไฟล์ CSV แล้ว');
   }
 
   function hydrateSettings() {
-    const settings = App.data.settings;
-    document.getElementById('emailNotifications').checked = settings.emailNotifications;
-    const reminderInput = document.getElementById('reminderTime');
-    if (document.activeElement !== reminderInput) {
-      reminderInput.value = settings.reminderTime || '20:00';
-    }
-    document.getElementById('budgetAlertThreshold').value = String(settings.budgetAlertThreshold || 0.8);
+    const s = App.data.settings || {};
+    document.getElementById('emailNotifications').checked = Boolean(s.emailNotifications);
+    document.getElementById('reminderTime').value = s.reminderTime || '20:00';
+    document.getElementById('budgetAlertThreshold').value = String(s.budgetAlertThreshold || 0.8);
   }
 
-  async function submitSettings(event) {
-    event.preventDefault();
+  async function submitSettings(e) {
+    e.preventDefault();
     const payload = {
       emailNotifications: document.getElementById('emailNotifications').checked,
       reminderTime: document.getElementById('reminderTime').value,
@@ -2781,34 +1907,24 @@
       App.data = await api('updateSettings', App.token, payload);
       renderAll();
       showToast('บันทึกการตั้งค่าแล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกการตั้งค่าไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
-  function readProfileImage(event) {
-    const file = event.target.files[0];
+  function readProfileImage(e) {
+    const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 750000) {
-      showToast('รูปใหญ่เกินไป กรุณาเลือกรูปไม่เกิน 750KB', true);
-      event.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      App.profileImageDraft = reader.result;
-      document.getElementById('settingsAvatar').src = reader.result;
+    if (file.size > 750000) return showToast('รูปใหญ่เกินไป (ไม่เกิน 750KB)', true);
+    const r = new FileReader();
+    r.onload = () => {
+      App.profileImageDraft = r.result;
+      document.getElementById('settingsAvatar').src = r.result;
     };
-    reader.readAsDataURL(file);
+    r.readAsDataURL(file);
   }
 
-  async function submitProfile(event) {
-    event.preventDefault();
-    const payload = {
-      displayName: document.getElementById('settingsDisplayName').value,
-    };
+  async function submitProfile(e) {
+    e.preventDefault();
+    const payload = { displayName: document.getElementById('settingsDisplayName').value };
     if (App.profileImageDraft) payload.profileImage = App.profileImageDraft;
     setLoading(true);
     try {
@@ -2816,41 +1932,26 @@
       App.profileImageDraft = '';
       renderAll();
       showToast('บันทึกโปรไฟล์แล้ว');
-    } catch (error) {
-      showToast(error.message || 'บันทึกโปรไฟล์ไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
-  async function submitDeleteAccount(event) {
-    event.preventDefault();
+  async function submitDeleteAccount(e) {
+    e.preventDefault();
     const password = document.getElementById('deleteAccountPassword').value;
-    if (!confirm('ยืนยันลบข้อมูลบัญชีถาวร? รายการ งบประมาณ รายการประจำ และโปรไฟล์ทั้งหมดจะหายไปและไม่สามารถกู้คืนได้')) return;
+    if (!confirm('ยืนยันลบบัญชีและข้อมูลทั้งหมดถาวร?')) return;
     setLoading(true);
     try {
       await api('deleteAccount', App.token, { password });
-      sessionStorage.removeItem('moneyflow_session');
-      localStorage.removeItem('moneyflow_remember');
-      App.token = '';
-      App.rememberToken = '';
-      App.data = null;
-      document.getElementById('deleteAccountForm').reset();
-      showToast('ลบข้อมูลบัญชีเรียบร้อยแล้ว');
+      sessionStorage.clear();
+      localStorage.clear();
       showAuth();
-    } catch (error) {
-      showToast(error.message || 'ลบบัญชีไม่สำเร็จ', true);
-    } finally {
-      setLoading(false);
-    }
+      showToast('ลบบัญชีเรียบร้อยแล้ว');
+    } finally { setLoading(false); }
   }
 
   function setTodayLabel() {
     document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('th-TH', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     }).format(new Date());
   }
 
@@ -2859,45 +1960,23 @@
   }
 
   let activeUndo_ = null;
-
-  // ทดแทน confirm() สำหรับการลบ — ซ่อนรายการทันที (ยังลบจริงไม่เกิดขึ้น) พร้อมโชว์ toast ให้กด
-  // "เลิกทำ" ได้ภายในเวลาที่กำหนด ถ้าไม่กดจะเรียก onCommit (เช่น ยิง API ลบจริง) เมื่อหมดเวลา
   function startUndoDelete({ message, onHide, onShow, onCommit, duration = 5000 }) {
-    if (activeUndo_) {
-      clearTimeout(activeUndo_.timer);
-      activeUndo_.commit();
-    }
-    if (onHide) onHide();
-
+    if (activeUndo_) { clearTimeout(activeUndo_.timer); activeUndo_.commit(); }
+    onHide?.();
     const toast = document.getElementById('undoToast');
     document.getElementById('undoToastMessage').textContent = message;
     toast.classList.remove('hidden');
-    const bar = toast.querySelector('.undo-progress');
-    bar.style.animation = 'none';
-    void bar.offsetWidth;
-    bar.style.animation = `undo-countdown ${duration}ms linear forwards`;
-
-    const commit = () => {
-      toast.classList.add('hidden');
-      activeUndo_ = null;
-      onCommit();
-    };
+    const commit = () => { toast.classList.add('hidden'); activeUndo_ = null; onCommit(); };
     const timer = setTimeout(commit, duration);
     activeUndo_ = {
-      timer,
-      commit,
-      cancel: () => {
-        clearTimeout(timer);
-        toast.classList.add('hidden');
-        activeUndo_ = null;
-        if (onShow) onShow();
-      },
+      timer, commit,
+      cancel: () => { clearTimeout(timer); toast.classList.add('hidden'); activeUndo_ = null; onShow?.(); },
     };
   }
 
-  function showToast(message, isError = false) {
+  function showToast(msg, isError = false) {
     const toast = document.getElementById('toast');
-    toast.textContent = message;
+    toast.textContent = msg;
     toast.classList.toggle('error', Boolean(isError));
     toast.classList.remove('hidden');
     clearTimeout(showToast.timer);
@@ -2908,68 +1987,52 @@
     if (window.lucide) lucide.createIcons();
   }
 
-  function money(value) {
-    return Number(value || 0).toLocaleString('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
+  function money(val) {
+    return Number(val || 0).toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
 
   function today() {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    return date.toISOString().slice(0, 10);
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
   }
 
   function currentTime() {
-    const date = new Date();
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
 
-  function dateDisplay(value) {
-    if (!value) return '';
-    const parts = String(value).split('-').map(Number);
-    return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
-      .format(new Date(parts[0], parts[1] - 1, parts[2]));
+  function dateDisplay(v) {
+    if (!v) return '';
+    const p = String(v).split('-').map(Number);
+    return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(p[0], p[1] - 1, p[2]));
   }
 
-  // วันที่แบบสั้น (ไม่มีปี) สำหรับกำกับรายการย่อยในหน้าประวัติเมื่อจัดกลุ่มแบบรายสัปดาห์/รายเดือน
-  function rowDateDisplay_(value) {
-    if (!value) return '';
-    const parts = String(value).split('-').map(Number);
-    return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' })
-      .format(new Date(parts[0], parts[1] - 1, parts[2]));
-  }
-
-  function timeDisplay(isoValue) {
-    if (!isoValue) return '';
-    const parsed = new Date(isoValue);
-    if (Number.isNaN(parsed.getTime())) return '';
-    return new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }).format(parsed);
+  function timeDisplay(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
   }
 
   function avatarDataUrl(name) {
     const initials = String(name || 'M').trim().slice(0, 2).toUpperCase();
-    const svg = `
+    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-        <rect width="128" height="128" rx="18" fill="#14b8a6"/>
-        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="white">${escapeHtml(initials)}</text>
-      </svg>`;
-    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        <rect width="128" height="128" rx="18" fill="#3f6b52"/>
+        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="42" font-weight="bold" fill="white">${escapeHtml(initials)}</text>
+      </svg>
+    `);
   }
 
-  function emptyHtml(text) {
-    return `<div class="empty-state">${escapeHtml(text)}</div>`;
+  function emptyHtml(txt) {
+    return `<div class="empty-state">${escapeHtml(txt)}</div>`;
   }
 
-  function escapeHtml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
   }
+
+  window.openBudgetFormModal = openBudgetFormModal;
+  window.closeBudgetFormModal = closeBudgetFormModal;
+  window.parseDate = parseDateVal;
 </script>

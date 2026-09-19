@@ -19,13 +19,14 @@ const APP = {
     Budget: ['budgetId', 'userId', 'period', 'amount', 'category', 'startDate', 'sortOrder', 'createdAt', 'updatedAt'],
     Recurring: ['recurringId', 'userId', 'type', 'amount', 'category', 'note', 'frequency', 'nextRunDate', 'active', 'createdAt', 'updatedAt', 'lastRunAt'],
     Settings: ['userId', 'darkMode', 'emailNotifications', 'reminderTime', 'budgetAlertThreshold', 'createdAt', 'updatedAt', 'lastReminderSentDate', 'lastStreakAlertSentDate', 'lastBudgetAlertSentKey'],
-    // เงินที่ย้ายเข้ากองออม ไม่ใช่รายจ่าย — จึงเก็บแยกจาก Transactions โดยสิ้นเชิง
-    // ไม่กระทบการคำนวณงบประมาณ/สถิติที่อ้างอิงเฉพาะ type income/expense ใน Transactions
     SavingsGoals: ['savingsGoalId', 'userId', 'name', 'icon', 'targetAmount', 'note', 'archived', 'createdAt', 'updatedAt'],
     SavingsLogs: ['savingsLogId', 'userId', 'savingsGoalId', 'direction', 'amount', 'note', 'date', 'createdAt'],
     Categories: ['categoryId', 'userId', 'type', 'name', 'icon', 'color', 'sortOrder', 'createdAt', 'updatedAt'],
   },
 };
+
+// In-memory request cache to minimize redundant Sheets API read/write calls
+const _MEM_CACHE = {};
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
@@ -43,7 +44,7 @@ function install() {
   setupSheets();
   formatSheets_();
   setupAutomationTriggers();
-  return { ok: true, message: 'Installed sheets and automation triggers.' };
+  return { ok: true, message: 'ติดตั้งชีตและระบบทำงานอัตโนมัติเรียบร้อยแล้ว' };
 }
 
 function setupSheets() {
@@ -51,7 +52,8 @@ function setupSheets() {
   Object.keys(APP.headers).forEach(function (sheetName) {
     const sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     const headers = APP.headers[sheetName];
-    const existing = sheet.getLastColumn() ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String) : [];
+    const lastCol = sheet.getLastColumn();
+    const existing = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String) : [];
 
     if (!existing.length || existing.every(function (cell) { return !cell; })) {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -63,12 +65,9 @@ function setupSheets() {
       });
     }
   });
+  CacheService.getScriptCache().put('sheets_initialized', 'true', 21600);
 }
 
-// Cosmetic-only (frozen row, bold header, background, column width). This is slow
-// (autoResizeColumns especially) so it only needs to run once at install time, never
-// on every login/resumeSession — it was previously part of setupSheets() and ran on
-// every single request, which is what made resumeSession take 16-29 seconds.
 function formatSheets_() {
   const ss = getSpreadsheet_();
   Object.keys(APP.headers).forEach(function (sheetName) {
@@ -93,7 +92,6 @@ function setupAutomationTriggers() {
 }
 
 function registerUser(payload) {
-  setupSheets();
   payload = payload || {};
   const email = normalizeEmail_(payload.email);
   const password = String(payload.password || '');
@@ -135,6 +133,7 @@ function registerUser(payload) {
   const salt = makeId_('salt');
   const userId = makeId_('usr');
   const passwordHash = hashPassword_(password, salt);
+
   appendObject_(APP.sheets.users, {
     userId: userId,
     email: email,
@@ -161,12 +160,13 @@ function registerUser(payload) {
     lastBudgetAlertSentKey: '',
   });
 
+  ensureCategoriesSeeded_(userId);
+
   const rememberToken = issueRememberToken_(userId);
   return createSessionResponse_(getUserById_(userId), rememberToken);
 }
 
 function loginUser(payload) {
-  setupSheets();
   payload = payload || {};
   const email = normalizeEmail_(payload.email);
   const password = String(payload.password || '');
@@ -205,9 +205,7 @@ function loginUser(payload) {
   return createSessionResponse_(getUserById_(user.userId), rememberToken);
 }
 
-// ขอ PIN สำหรับตั้งรหัสผ่านใหม่ — ตอบกลับข้อความเดียวกันเสมอไม่ว่าอีเมลจะมีอยู่จริงหรือไม่ (กันการสุ่มเช็คว่าอีเมลไหนสมัครไว้)
 function requestPasswordReset(email) {
-  setupSheets();
   const normalizedEmail = normalizeEmail_(email);
   const generic = { ok: true, message: 'หากอีเมลนี้มีอยู่ในระบบ เราได้ส่ง PIN สำหรับตั้งรหัสผ่านใหม่ไปให้ทางอีเมลแล้ว' };
   if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return generic;
@@ -225,9 +223,7 @@ function requestPasswordReset(email) {
   return generic;
 }
 
-// ตั้งรหัสผ่านใหม่ด้วย PIN ที่ส่งไปทางอีเมล แล้วล็อกอินให้อัตโนมัติ
 function resetPasswordWithPin(payload) {
-  setupSheets();
   payload = payload || {};
   const email = normalizeEmail_(payload.email);
   const pin = String(payload.pin || '').trim();
@@ -260,7 +256,6 @@ function resetPasswordWithPin(payload) {
 }
 
 function resumeSession(rememberToken) {
-  setupSheets();
   const token = String(rememberToken || '').trim();
   if (!token) throw new Error('ไม่พบข้อมูลการเข้าสู่ระบบก่อนหน้า กรุณาเข้าสู่ระบบใหม่');
 
@@ -274,10 +269,6 @@ function resumeSession(rememberToken) {
     lastLogin: nowIso_(),
     updatedAt: nowIso_(),
   });
-  // Reuse the same rememberToken instead of rotating it: rotating on every resume
-  // let concurrent resume calls (e.g. the 60s silentRefresh firing alongside a user
-  // action) race to overwrite rememberTokenHash, orphaning whichever token the
-  // client had stored and causing "session expired" again on the very next resume.
   return createSessionResponse_(getUserById_(user.userId), token);
 }
 
@@ -346,6 +337,9 @@ function saveTransactions(token, payloads) {
   payloads = Array.isArray(payloads) ? payloads : [];
   if (!payloads.length) throw new Error('ไม่มีรายการสำหรับบันทึก');
 
+  const rowsToAppend = [];
+  const categoriesToCheck = [];
+
   payloads.forEach(function (payload) {
     payload = payload || {};
     const type = String(payload.type || '').toLowerCase();
@@ -357,7 +351,7 @@ function saveTransactions(token, payloads) {
     if (!amount || amount <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0');
     if (!category) throw new Error('กรุณาเลือกหมวดหมู่');
 
-    appendObject_(APP.sheets.transactions, {
+    rowsToAppend.push({
       transactionId: makeId_('txn'),
       userId: user.userId,
       type: type,
@@ -365,11 +359,16 @@ function saveTransactions(token, payloads) {
       category: category,
       note: sanitizeText_(payload.note || '', 300),
       date: date,
-      createdAt: nowIso_(),
+      createdAt: payload.time ? composeDateTimeIso_(date, payload.time) : nowIso_(),
       source: payload.source || 'manual',
       recurringId: payload.recurringId || '',
     });
-    ensureCategoryExists_(user.userId, type, category);
+    categoriesToCheck.push({ type: type, name: category });
+  });
+
+  appendObjectsBatch_(APP.sheets.transactions, rowsToAppend);
+  categoriesToCheck.forEach(function (cat) {
+    ensureCategoryExists_(user.userId, cat.type, cat.name);
   });
 
   return buildAppData_(user.userId);
@@ -457,7 +456,6 @@ function saveBudgetForUser_(userId, payload) {
   return buildAppData_(userId);
 }
 
-// หาลำดับถัดไปสำหรับงบประมาณใหม่ (ต่อท้ายลิสต์เสมอ ไม่แทรกกลางลำดับที่ผู้ใช้จัดไว้)
 function getNextBudgetSortOrder_(userId) {
   const orders = getSheetData_(APP.sheets.budgets).rows
     .filter(function (row) { return row.userId === userId; })
@@ -466,7 +464,6 @@ function getNextBudgetSortOrder_(userId) {
   return orders.length ? Math.max.apply(null, orders) + 1 : 0;
 }
 
-// เติมค่า sortOrder ให้แถวเก่าที่ยังไม่มี (เช่นงบที่สร้างไว้ก่อนมีฟีเจอร์นี้) โดยเรียงตามวันที่สร้างก่อน-หลัง
 function ensureBudgetSortOrder_(userId) {
   const rows = getSheetData_(APP.sheets.budgets).rows.filter(function (row) { return row.userId === userId; });
   const missing = rows.filter(function (row) { return row.sortOrder === '' || row.sortOrder === undefined || row.sortOrder === null || isNaN(Number(row.sortOrder)); });
@@ -482,23 +479,29 @@ function ensureBudgetSortOrder_(userId) {
   });
 }
 
-// จัดลำดับงบประมาณใหม่ตามลำดับ budgetId ที่ผู้ใช้ลากหรือเลื่อนมา — อันแรกสุดจะกลายเป็นงบหลักที่โชว์บนแดชบอร์ด
 function reorderBudgets(token, orderedIds) {
   const user = requireUser_(token);
   if (!Array.isArray(orderedIds)) throw new Error('ลำดับงบประมาณไม่ถูกต้อง');
 
-  const userBudgetIds = getSheetData_(APP.sheets.budgets).rows
-    .filter(function (row) { return row.userId === user.userId; })
-    .map(function (row) { return row.budgetId; });
-
-  const finalOrder = orderedIds.filter(function (id) { return userBudgetIds.indexOf(id) >= 0; });
-  userBudgetIds.forEach(function (id) {
-    if (finalOrder.indexOf(id) < 0) finalOrder.push(id);
+  const budgetsData = getSheetData_(APP.sheets.budgets);
+  const userBudgetMap = {};
+  budgetsData.rows.forEach(function (row) {
+    if (row.userId === user.userId) userBudgetMap[row.budgetId] = row;
   });
 
-  finalOrder.forEach(function (budgetId, index) {
-    updateObjectByKey_(APP.sheets.budgets, 'budgetId', budgetId, { sortOrder: index });
-  });
+  const orderMap = {};
+  orderedIds.forEach(function (id, idx) { orderMap[id] = idx; });
+
+  const sheet = getSheet_(APP.sheets.budgets);
+  const colIndex = budgetsData.headers.indexOf('sortOrder') + 1;
+  if (colIndex > 0) {
+    budgetsData.rows.forEach(function (row) {
+      if (row.userId === user.userId && orderMap[row.budgetId] !== undefined) {
+        sheet.getRange(row._rowNumber, colIndex).setValue(orderMap[row.budgetId]);
+        row.sortOrder = orderMap[row.budgetId];
+      }
+    });
+  }
   return buildAppData_(user.userId);
 }
 
@@ -523,6 +526,7 @@ function updateBudget(token, budgetId, payload) {
     startDate: normalizeDateInput_(payload.startDate || budget.startDate || new Date()),
     updatedAt: nowIso_(),
   });
+  if (category) ensureCategoryExists_(user.userId, 'expense', category);
   return buildAppData_(user.userId);
 }
 
@@ -550,7 +554,7 @@ function saveRecurring(token, payload) {
 
   const now = nowIso_();
   const recurringId = payload.recurringId || makeId_('rec');
-  const existing = payload.recurringId ? getObjectByKey_(APP.sheets.recurring, 'recurringId', payload.recurringId) : null;
+  const existing = payload.recurringId ? getSheetData_(APP.sheets.recurring).rows.find(function(r) { return r.recurringId === payload.recurringId; }) : null;
   const row = {
     recurringId: recurringId,
     userId: user.userId,
@@ -586,7 +590,6 @@ function deleteRecurring(token, recurringId) {
 }
 
 // ============ หมวดหมู่ (Categories) ============
-// ผู้ใช้ใหม่จะได้ชุดหมวดหมู่เริ่มต้นนี้อัตโนมัติในการเข้าใช้งานครั้งแรก
 const DEFAULT_CATEGORIES = {
   expense: [
     { name: 'อาหาร', icon: 'utensils', color: '#c4635a' },
@@ -611,15 +614,15 @@ const DEFAULT_CATEGORIES = {
 const FALLBACK_CATEGORY_ICON = 'tag';
 const FALLBACK_CATEGORY_COLOR = '#7a7a72';
 
-// สร้างหมวดหมู่เริ่มต้นให้ผู้ใช้ที่ยังไม่มีหมวดหมู่ใดๆ เลย (ครั้งแรกที่เข้าใช้งาน)
 function ensureCategoriesSeeded_(userId) {
   const existing = getSheetData_(APP.sheets.categories).rows.filter(function (row) { return row.userId === userId; });
   if (existing.length) return;
   const now = nowIso_();
   let sortOrder = 0;
+  const rowsToAppend = [];
   ['expense', 'income'].forEach(function (type) {
     DEFAULT_CATEGORIES[type].forEach(function (item) {
-      appendObject_(APP.sheets.categories, {
+      rowsToAppend.push({
         categoryId: makeId_('cat'),
         userId: userId,
         type: type,
@@ -633,9 +636,9 @@ function ensureCategoriesSeeded_(userId) {
       sortOrder += 1;
     });
   });
+  appendObjectsBatch_(APP.sheets.categories, rowsToAppend);
 }
 
-// อ่านหมวดหมู่ของผู้ใช้ แยกตามประเภท เรียงตามลำดับที่ตั้งไว้
 function getCategoriesForUser_(userId) {
   ensureCategoriesSeeded_(userId);
   const rows = getSheetData_(APP.sheets.categories).rows
@@ -657,8 +660,6 @@ function getCategoriesForUser_(userId) {
   return result;
 }
 
-// เรียกทุกครั้งที่มีการบันทึกรายการ/งบ/รายการประจำ ด้วยชื่อหมวดหมู่ใดๆ
-// ถ้าชื่อนั้นยังไม่เคยมีในรายการหมวดหมู่ของผู้ใช้ ให้สร้างให้อัตโนมัติ (กันไม่ให้หมวดที่พิมพ์ผ่าน NLP/OCR หายไปจากลิสต์)
 function ensureCategoryExists_(userId, type, name) {
   const cleanName = sanitizeText_(name || '', 80);
   const cleanType = type === 'income' ? 'income' : 'expense';
@@ -754,24 +755,25 @@ function deleteCategory(token, categoryId) {
   return buildAppData_(user.userId);
 }
 
-// จัดลำดับหมวดหมู่ใหม่ตามที่ผู้ใช้ลาก/เลื่อน แยกลำดับกันคนละชุดระหว่างรายรับ-รายจ่าย
 function reorderCategories(token, type, orderedIds) {
   const user = requireUser_(token);
   const cleanType = type === 'income' ? 'income' : 'expense';
   if (!Array.isArray(orderedIds)) throw new Error('ลำดับหมวดหมู่ไม่ถูกต้อง');
 
-  const userCategoryIds = getSheetData_(APP.sheets.categories).rows
-    .filter(function (row) { return row.userId === user.userId && row.type === cleanType; })
-    .map(function (row) { return row.categoryId; });
+  const catData = getSheetData_(APP.sheets.categories);
+  const orderMap = {};
+  orderedIds.forEach(function (id, idx) { orderMap[id] = idx; });
 
-  const finalOrder = orderedIds.filter(function (id) { return userCategoryIds.indexOf(id) >= 0; });
-  userCategoryIds.forEach(function (id) {
-    if (finalOrder.indexOf(id) < 0) finalOrder.push(id);
-  });
-
-  finalOrder.forEach(function (categoryId, index) {
-    updateObjectByKey_(APP.sheets.categories, 'categoryId', categoryId, { sortOrder: index });
-  });
+  const sheet = getSheet_(APP.sheets.categories);
+  const colIndex = catData.headers.indexOf('sortOrder') + 1;
+  if (colIndex > 0) {
+    catData.rows.forEach(function (row) {
+      if (row.userId === user.userId && row.type === cleanType && orderMap[row.categoryId] !== undefined) {
+        sheet.getRange(row._rowNumber, colIndex).setValue(orderMap[row.categoryId]);
+        row.sortOrder = orderMap[row.categoryId];
+      }
+    });
+  }
   return buildAppData_(user.userId);
 }
 
@@ -790,24 +792,6 @@ function updateSettings(token, payload) {
   return buildAppData_(user.userId);
 }
 
-function saveNlpCategoryRule(token, payload) {
-  const user = requireUser_(token);
-  payload = payload || {};
-  const keyword = sanitizeText_(payload.keyword || '', 80).toLowerCase();
-  const category = sanitizeText_(payload.category || '', 80);
-  if (!keyword) throw new Error('กรุณาระบุคำสำหรับจำหมวดหมู่');
-  if (!category) throw new Error('กรุณาระบุหมวดหมู่');
-
-  const settings = getSettingsForUser_(user.userId);
-  const rules = parseJsonObject_(settings.nlpCategoryRules);
-  rules[keyword] = category;
-  updateObjectByKey_(APP.sheets.settings, 'userId', user.userId, {
-    nlpCategoryRules: JSON.stringify(rules),
-    updatedAt: nowIso_(),
-  });
-  return buildAppData_(user.userId);
-}
-
 function deleteAccount(token, payload) {
   const user = requireUser_(token);
   payload = payload || {};
@@ -816,17 +800,26 @@ function deleteAccount(token, payload) {
     throw new Error('รหัสผ่านไม่ถูกต้อง กรุณากรอกรหัสผ่านเพื่อยืนยันการลบบัญชี');
   }
 
-  [APP.sheets.transactions, APP.sheets.budgets, APP.sheets.recurring, APP.sheets.savingsGoals, APP.sheets.savingsLogs].forEach(function (sheetName) {
+  const sheetsToClean = [
+    APP.sheets.transactions,
+    APP.sheets.budgets,
+    APP.sheets.recurring,
+    APP.sheets.savingsGoals,
+    APP.sheets.savingsLogs,
+    APP.sheets.categories,
+  ];
+
+  sheetsToClean.forEach(function (sheetName) {
     const rows = getSheetData_(sheetName).rows
       .filter(function (row) { return row.userId === user.userId; })
       .sort(function (a, b) { return b._rowNumber - a._rowNumber; });
     rows.forEach(function (row) { deleteRowByNumber_(sheetName, row._rowNumber); });
   });
 
-  const settingsRow = getObjectByKey_(APP.sheets.settings, 'userId', user.userId);
+  const settingsRow = getSheetData_(APP.sheets.settings).rows.find(function(r) { return r.userId === user.userId; });
   if (settingsRow) deleteRowByNumber_(APP.sheets.settings, settingsRow._rowNumber);
 
-  const userRow = getObjectByKey_(APP.sheets.users, 'userId', user.userId);
+  const userRow = getSheetData_(APP.sheets.users).rows.find(function(r) { return r.userId === user.userId; });
   if (userRow) deleteRowByNumber_(APP.sheets.users, userRow._rowNumber);
 
   CacheService.getScriptCache().remove('session:' + token);
@@ -834,9 +827,6 @@ function deleteAccount(token, payload) {
 }
 
 // ============ SAVINGS GOAL SYSTEM ============
-// หลักการ: เงินที่ฝากเข้ากองออมไม่ใช่รายจ่าย แต่เป็นการ "ย้ายสภาพคล่อง" —
-// เงินยังเป็นของผู้ใช้เหมือนเดิม เพียงแค่ย้ายจาก "พร้อมใช้" ไปเป็น "กันไว้ในเป้าหมาย"
-// ดังนั้นการฝาก/ถอนจึงไม่เขียนลงชีต Transactions เลย งบประมาณและสถิติรายจ่ายจึงไม่ถูกกระทบ
 function saveSavingsGoal(token, payload) {
   const user = requireUser_(token);
   payload = payload || {};
@@ -847,7 +837,7 @@ function saveSavingsGoal(token, payload) {
 
   const now = nowIso_();
   const editingId = payload.savingsGoalId ? String(payload.savingsGoalId) : '';
-  const existing = editingId ? getObjectByKey_(APP.sheets.savingsGoals, 'savingsGoalId', editingId) : null;
+  const existing = editingId ? getSheetData_(APP.sheets.savingsGoals).rows.find(function(r) { return r.savingsGoalId === editingId; }) : null;
   if (editingId && (!existing || existing.userId !== user.userId)) {
     throw new Error('ไม่พบเป้าหมายการออมนี้');
   }
@@ -897,7 +887,7 @@ function saveSavingsLog(token, payload) {
   if (['deposit', 'withdraw'].indexOf(direction) < 0) throw new Error('ประเภทการออมไม่ถูกต้อง');
   if (!amount || amount <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0');
 
-  const goal = getObjectByKey_(APP.sheets.savingsGoals, 'savingsGoalId', savingsGoalId);
+  const goal = getSheetData_(APP.sheets.savingsGoals).rows.find(function(r) { return r.savingsGoalId === savingsGoalId; });
   if (!goal || goal.userId !== user.userId) throw new Error('ไม่พบเป้าหมายการออมนี้');
 
   if (direction === 'withdraw') {
@@ -939,19 +929,20 @@ function computeSavingsGoalSaved_(userId, savingsGoalId) {
 }
 
 function processRecurringTransactions() {
-  setupSheets();
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return;
   try {
     const today = dateKey_(new Date());
     const recurringData = getSheetData_(APP.sheets.recurring);
+    const existingTxRows = getSheetData_(APP.sheets.transactions).rows;
+
     recurringData.rows.forEach(function (item) {
       if (!toBoolean_(item.active)) return;
       let nextDate = normalizeDateInput_(item.nextRunDate || new Date());
       if (nextDate > today) return;
 
       while (nextDate <= today) {
-        const alreadyExists = getSheetData_(APP.sheets.transactions).rows.some(function (tx) {
+        const alreadyExists = existingTxRows.some(function (tx) {
           return tx.userId === item.userId && tx.recurringId === item.recurringId && normalizeDateInput_(tx.date) === nextDate;
         });
         if (!alreadyExists) {
@@ -983,7 +974,6 @@ function processRecurringTransactions() {
 }
 
 function processEmailNotifications() {
-  setupSheets();
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return;
   try {
@@ -1011,7 +1001,7 @@ function processEmailNotifications() {
       if (appData.streak.days > 0 && !appData.streak.hasLoggedToday && !streakAlertSentToday && isAfterLocalHour_(18)) {
         GmailApp.sendEmail(
           user.email,
-          'Streak ของคุณใกล้ขาดช่วง',
+          'FinNote : Streak ของคุณใกล้ขาดช่วง',
           'วันนี้คุณยังไม่ได้จดบันทึกเลย Streak ' + appData.streak.days + ' วันของคุณกำลังจะหายไปนะ'
         );
         CacheService.getScriptCache().put(streakAlertCacheKey, '1', 21600);
@@ -1056,6 +1046,7 @@ function buildAppData_(userId) {
     .sort(function (a, b) {
       return String(b.date + b.createdAt).localeCompare(String(a.date + a.createdAt));
     });
+
   ensureBudgetSortOrder_(userId);
   const budgets = getSheetData_(APP.sheets.budgets).rows
     .filter(function (row) { return row.userId === userId; })
@@ -1074,6 +1065,7 @@ function buildAppData_(userId) {
       return budget;
     })
     .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+
   const recurring = getSheetData_(APP.sheets.recurring).rows
     .filter(function (row) { return row.userId === userId; })
     .map(function (row) {
@@ -1120,8 +1112,6 @@ function buildAppData_(userId) {
     })
     .sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); });
 
-  // เงินออมสะสม = เงินที่ย้ายสภาพคล่องไปกันไว้ ไม่ใช่รายจ่าย จึงไม่ถูกหักในสถิติ/งบประมาณ
-  // แต่ "เงินคงเหลือพร้อมใช้" ต้องหักเงินออมออกจากยอดสุทธิสะสมทั้งหมด เพราะเป็นเงินที่ถูกกันไว้แล้ว
   const totalSaved = roundMoney_(savingsGoals.reduce(function (sum, goal) { return sum + goal.saved; }, 0));
   const allTimeTotals = totalsForRange_(transactions, { start: '0000-01-01', end: '9999-12-31' });
   const savingsSummary = {
@@ -1142,7 +1132,7 @@ function buildAppData_(userId) {
     budgets: budgets,
     budget: buildBudgetSummary_(budgets),
     recurring: recurring,
-    analytics: buildAnalytics_(transactions),
+    analytics: buildAnalytics_(transactions, budgets),
     streak: buildStreak_(transactions),
     savingsGoals: savingsGoals,
     savingsLogs: savingsLogs.slice(0, 20),
@@ -1151,17 +1141,14 @@ function buildAppData_(userId) {
   };
 }
 
-// งบหลักที่โชว์บนแดชบอร์ด = งบประมาณอันแรกสุดตามลำดับที่ผู้ใช้จัดไว้ (sortOrder)
-// ไม่ว่าจะเป็นงบรวมหรืองบเฉพาะหมวดหมู่ก็ได้ ผู้ใช้เป็นคนกำหนดเองว่าอันไหนคือ "หลัก"
 function buildBudgetSummary_(budgets) {
-  if (!budgets.length) {
+  if (!budgets || !budgets.length) {
     return { period: 'monthly', amount: 0, spent: 0, remaining: 0, ratio: 0, percent: 0, overBudget: false, periodStart: getPeriodRange_('monthly').start, periodEnd: getPeriodRange_('monthly').end };
   }
-  return budgets[0];
+  const overall = budgets.find(function (b) { return !b.category; });
+  return overall || budgets[0];
 }
 
-// คำนวณความคืบหน้าของงบแต่ละก้อน — ถ้า budget.category ว่าง จะนับรวมทุกหมวด (งบรวม)
-// ถ้าระบุหมวดหมู่ไว้ จะนับเฉพาะรายจ่ายในหมวดนั้น (งบตามหมวดหมู่)
 function computeBudgetProgress_(transactions, budget) {
   const range = getPeriodRangeFromStart_(budget.period, budget.startDate);
   const spent = transactions
@@ -1176,16 +1163,13 @@ function computeBudgetProgress_(transactions, budget) {
     spent: roundMoney_(spent),
     remaining: roundMoney_(amount - spent),
     ratio: ratio,
-    percent: Math.min(100, Math.round(ratio * 100)),
+    percent: Math.round(ratio * 100),
     overBudget: ratio > 1,
     periodStart: range.start,
     periodEnd: range.end,
   };
 }
 
-// สร้างรายการ "รอบงบประมาณ" ทั้งหมดตั้งแต่วันที่เริ่มงบ (startDate) จนถึงรอบปัจจุบัน
-// ใช้ตรรกะเดียวกับ getPeriodRangeFromStart_ แต่ไล่ย้อนสร้างทุกรอบแทนที่จะเอาแค่รอบล่าสุด
-// จำกัดจำนวนรอบสูงสุดไว้กันการวนลูปนานเกินไปกรณีตั้งงบแบบรายวันไว้นาน ๆ
 function generateBudgetCycles_(period, startDateText) {
   const today = stripTime_(new Date());
   const anchor = stripTime_(parseDate_(normalizeDateInput_(startDateText || dateKey_(today))));
@@ -1240,31 +1224,50 @@ function generateBudgetCycles_(period, startDateText) {
   return cycles;
 }
 
-// สถิติการใช้จ่ายเกินงบประมาณย้อนหลัง: นับเฉพาะ "รอบที่จบแล้ว" (ไม่รวมรอบปัจจุบันที่ยังไม่จบ)
-// เพื่อไม่ให้รอบที่ยังใช้จ่ายไม่ครบทำให้ค่าเฉลี่ย/โอกาสเกินงบคลาดเคลื่อน
 function computeBudgetOverspendStats_(transactions, budget) {
-  const allCycles = generateBudgetCycles_(budget.period, budget.startDate);
-  const completedCycles = allCycles.slice(0, -1); // ตัดรอบปัจจุบันที่ยังไม่จบออก
+  // Find earliest transaction date if earlier than startDate to allow historical analysis
+  let effectiveStartDate = normalizeDateInput_(budget.startDate || new Date());
+  transactions.forEach(function (tx) {
+    if (tx.type !== 'expense') return;
+    if (budget.category && tx.category !== budget.category) return;
+    const txDate = normalizeDateInput_(tx.date);
+    if (!effectiveStartDate || txDate < effectiveStartDate) {
+      effectiveStartDate = txDate;
+    }
+  });
 
-  // จำกัดช่วงเวลาที่นำมานับสถิติ "เกินงบ": งบรายวัน/รายสัปดาห์ดูย้อนหลัง 1 เดือน, งบรายเดือนดูย้อนหลัง 1 ปี
-  // กันไม่ให้เอารอบเก่ามากๆ (เช่นปีที่แล้ว) มาปนกับสถานการณ์ปัจจุบัน
+  const allCycles = generateBudgetCycles_(budget.period, effectiveStartDate);
+  if (!allCycles.length) {
+    return {
+      totalCycles: 0,
+      overCount: 0,
+      overProbabilityPercent: 0,
+      totalOverAmount: 0,
+      avgOverPercent: 0,
+      avgSpent: 0,
+    };
+  }
+
   const windowStart = stripTime_(new Date());
   if (budget.period === 'monthly') {
     windowStart.setFullYear(windowStart.getFullYear() - 1);
+  } else if (budget.period === 'weekly') {
+    windowStart.setMonth(windowStart.getMonth() - 3);
   } else {
     windowStart.setMonth(windowStart.getMonth() - 1);
   }
   const windowStartKey = dateKey_(windowStart);
-  const scopedCycles = completedCycles.filter(function (range) { return range.end >= windowStartKey; });
+  const scopedCycles = allCycles.filter(function (range) { return range.end >= windowStartKey; });
 
   const amount = Number(budget.amount || 0);
-
   let overCount = 0;
   let totalOverAmount = 0;
   let overPercentSum = 0;
   let totalSpent = 0;
+  let evaluatedCyclesCount = 0;
 
-  scopedCycles.forEach(function (range) {
+  scopedCycles.forEach(function (range, idx) {
+    const isCurrentCycle = (idx === scopedCycles.length - 1);
     const spent = transactions
       .filter(function (tx) {
         if (tx.type !== 'expense' || tx.date < range.start || tx.date > range.end) return false;
@@ -1272,6 +1275,12 @@ function computeBudgetOverspendStats_(transactions, budget) {
       })
       .reduce(function (sum, tx) { return sum + Number(tx.amount || 0); }, 0);
 
+    // If current cycle has no expenses yet and there are older cycles, skip incomplete cycle
+    if (isCurrentCycle && spent === 0 && scopedCycles.length > 1) {
+      return;
+    }
+
+    evaluatedCyclesCount++;
     totalSpent += spent;
     if (amount > 0 && spent > amount) {
       overCount++;
@@ -1281,7 +1290,7 @@ function computeBudgetOverspendStats_(transactions, budget) {
     }
   });
 
-  const totalCycles = scopedCycles.length;
+  const totalCycles = evaluatedCyclesCount;
   return {
     totalCycles: totalCycles,
     overCount: overCount,
@@ -1292,30 +1301,80 @@ function computeBudgetOverspendStats_(transactions, budget) {
   };
 }
 
-function buildAnalytics_(transactions) {
+function buildAnalytics_(transactions, budgets) {
+  budgets = budgets || [];
   return {
     daily: buildPeriodStats_(transactions, 'daily'),
     weekly: buildPeriodStats_(transactions, 'weekly'),
     monthly: buildPeriodStats_(transactions, 'monthly'),
     categoryExpense: categoryBreakdown_(transactions, 'expense', getPeriodRange_('monthly')),
     categoryIncome: categoryBreakdown_(transactions, 'income', getPeriodRange_('monthly')),
+    budgetOverspend: budgets.map(function (b) {
+      return {
+        budgetId: b.budgetId,
+        category: b.category,
+        period: b.period,
+        amount: b.amount,
+        spent: b.spent,
+        overBudget: b.overBudget,
+        percent: b.percent,
+        overspend: b.overspend || computeBudgetOverspendStats_(transactions, b),
+      };
+    }),
   };
 }
 
 function buildPeriodStats_(transactions, period) {
-  const current = getPeriodRange_(period, new Date(), 0);
-  const previous = getPeriodRange_(period, new Date(), -1);
-  const currentTotals = totalsForRange_(transactions, current);
-  const previousTotals = totalsForRange_(transactions, previous);
+  const now = new Date();
+  const current = getPeriodRange_(period, now, 0);
+  const todayKey = dateKey_(stripTime_(now));
+  const currentRange = { start: current.start, end: current.end < todayKey ? current.end : todayKey };
+
+  const previousStart = getPeriodRange_(period, now, -1).start;
+  const previousCutoff = comparablePreviousCutoff_(period, parseDate_(current.start), parseDate_(previousStart), now);
+
+  const currentTotals = totalsForRange_(transactions, currentRange);
+  const previousTotals = totalsUpToCutoff_(transactions, previousStart, previousCutoff);
+
   return {
     period: period,
-    range: current,
+    range: currentRange,
     income: currentTotals.income,
     expense: currentTotals.expense,
     balance: roundMoney_(currentTotals.income - currentTotals.expense),
     previousExpense: previousTotals.expense,
     expenseChangePercent: percentChange_(currentTotals.expense, previousTotals.expense),
   };
+}
+
+function comparablePreviousCutoff_(period, currentStart, previousStart, now) {
+  const cutoff = new Date(previousStart);
+  if (period === 'monthly') {
+    const dayOfMonth = stripTime_(now).getDate();
+    cutoff.setDate(Math.min(dayOfMonth, daysInMonth_(previousStart.getFullYear(), previousStart.getMonth())));
+  } else {
+    const elapsedDays = Math.round((stripTime_(now).getTime() - currentStart.getTime()) / 86400000);
+    cutoff.setDate(cutoff.getDate() + elapsedDays);
+  }
+  cutoff.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return cutoff;
+}
+
+function totalsUpToCutoff_(transactions, startKey, cutoffDate) {
+  const cutoffKey = dateKey_(cutoffDate);
+  return transactions
+    .filter(function (tx) {
+      if (tx.date < startKey || tx.date > cutoffKey) return false;
+      if (tx.date === cutoffKey) {
+        const createdAt = tx.createdAt ? new Date(tx.createdAt) : parseDate_(tx.date);
+        return createdAt.getTime() <= cutoffDate.getTime();
+      }
+      return true;
+    })
+    .reduce(function (acc, tx) {
+      acc[tx.type] += Number(tx.amount || 0);
+      return acc;
+    }, { income: 0, expense: 0 });
 }
 
 function totalsForRange_(transactions, range) {
@@ -1411,10 +1470,10 @@ function getUserById_(userId) {
 }
 
 function getSettingsForUser_(userId) {
-  const settings = getObjectByKey_(APP.sheets.settings, 'userId', userId);
+  const settings = getSheetData_(APP.sheets.settings).rows.find(function(r) { return r.userId === userId; });
   if (settings) return settings;
   const now = nowIso_();
-  appendObject_(APP.sheets.settings, {
+  const newSetting = {
     userId: userId,
     darkMode: false,
     emailNotifications: false,
@@ -1425,8 +1484,9 @@ function getSettingsForUser_(userId) {
     lastReminderSentDate: '',
     lastStreakAlertSentDate: '',
     lastBudgetAlertSentKey: '',
-  });
-  return getObjectByKey_(APP.sheets.settings, 'userId', userId);
+  };
+  appendObject_(APP.sheets.settings, newSetting);
+  return newSetting;
 }
 
 function publicUser_(user) {
@@ -1446,7 +1506,6 @@ function publicSettings_(settings) {
     emailNotifications: toBoolean_(settings.emailNotifications),
     reminderTime: normalizeTime_(settings.reminderTime || '20:00'),
     budgetAlertThreshold: Number(settings.budgetAlertThreshold || 0.8),
-    nlpCategoryRules: parseJsonObject_(settings.nlpCategoryRules),
   };
 }
 
@@ -1477,23 +1536,35 @@ function publicSavingsLog_(row) {
 }
 
 function getSpreadsheet_() {
+  if (_MEM_CACHE.spreadsheet) return _MEM_CACHE.spreadsheet;
   const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
-  const active = SpreadsheetApp.getActiveSpreadsheet();
-  if (active) return active;
-  throw new Error('กรุณาตั้งค่า Script Property ชื่อ SPREADSHEET_ID เป็น ID ของ Google Sheets');
+  const ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('กรุณาตั้งค่า Script Property ชื่อ SPREADSHEET_ID เป็น ID ของ Google Sheets');
+  _MEM_CACHE.spreadsheet = ss;
+  return ss;
 }
 
 function getSheet_(sheetName) {
-  return getSpreadsheet_().getSheetByName(sheetName);
+  const ss = getSpreadsheet_();
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName(sheetName);
+  }
+  if (!sheet) throw new Error('ไม่สามารถเข้าถึงชีต ' + sheetName);
+  return sheet;
 }
 
 function getSheetData_(sheetName) {
+  if (_MEM_CACHE[sheetName]) return _MEM_CACHE[sheetName];
   const sheet = getSheet_(sheetName);
-  if (!sheet) throw new Error('ไม่พบชีต ' + sheetName + ' กรุณารัน install() ก่อน');
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
-  if (lastRow < 1 || lastCol < 1) return { headers: [], rows: [] };
+  if (lastRow < 1 || lastCol < 1) {
+    const empty = { headers: [], rows: [] };
+    _MEM_CACHE[sheetName] = empty;
+    return empty;
+  }
   const values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   const headers = values.shift().map(String);
   const rows = values.filter(function (row) {
@@ -1506,7 +1577,9 @@ function getSheetData_(sheetName) {
     obj._rowNumber = index + 2;
     return obj;
   });
-  return { headers: headers, rows: rows };
+  const data = { headers: headers, rows: rows };
+  _MEM_CACHE[sheetName] = data;
+  return data;
 }
 
 function appendObject_(sheetName, obj) {
@@ -1516,24 +1589,42 @@ function appendObject_(sheetName, obj) {
     return obj[header] === undefined ? '' : obj[header];
   });
   sheet.appendRow(row);
+  delete _MEM_CACHE[sheetName];
+}
+
+function appendObjectsBatch_(sheetName, objects) {
+  if (!objects || !objects.length) return;
+  const sheet = getSheet_(sheetName);
+  const headers = getSheetData_(sheetName).headers;
+  const rows = objects.map(function (obj) {
+    return headers.map(function (header) {
+      return obj[header] === undefined ? '' : obj[header];
+    });
+  });
+  const lastRow = Math.max(1, sheet.getLastRow());
+  sheet.getRange(lastRow + 1, 1, rows.length, headers.length).setValues(rows);
+  delete _MEM_CACHE[sheetName];
 }
 
 function updateObjectByKey_(sheetName, key, value, patch) {
   const data = getSheetData_(sheetName);
   const row = data.rows.find(function (item) { return item[key] === value; });
   if (!row) throw new Error('ไม่พบข้อมูลสำหรับอัปเดตในชีต ' + sheetName);
+  const sheet = getSheet_(sheetName);
+
   Object.keys(patch).forEach(function (field) {
     const col = data.headers.indexOf(field) + 1;
-    if (col > 0) getSheet_(sheetName).getRange(row._rowNumber, col).setValue(patch[field]);
+    if (col > 0) {
+      sheet.getRange(row._rowNumber, col).setValue(patch[field]);
+      row[field] = patch[field];
+    }
   });
-}
-
-function getObjectByKey_(sheetName, key, value) {
-  return getSheetData_(sheetName).rows.find(function (row) { return row[key] === value; });
+  delete _MEM_CACHE[sheetName];
 }
 
 function deleteRowByNumber_(sheetName, rowNumber) {
   getSheet_(sheetName).deleteRow(rowNumber);
+  delete _MEM_CACHE[sheetName];
 }
 
 function hashPassword_(password, salt) {
@@ -1592,10 +1683,15 @@ function sanitizeImage_(value) {
 }
 
 function normalizeDateInput_(value) {
-  if (Object.prototype.toString.call(value) === '[object Date]') return dateKey_(value);
+  if (!value) return dateKey_(new Date());
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return isNaN(value.getTime()) ? dateKey_(new Date()) : dateKey_(value);
+  }
   const text = String(value || '').trim();
+  if (!text) return dateKey_(new Date());
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  return dateKey_(new Date(text));
+  const d = new Date(text);
+  return isNaN(d.getTime()) ? dateKey_(new Date()) : dateKey_(d);
 }
 
 function normalizeTime_(value) {
@@ -1604,7 +1700,6 @@ function normalizeTime_(value) {
   return match ? text : '20:00';
 }
 
-// รวมวันที่ (yyyy-MM-dd) กับเวลา (HH:mm) ที่ผู้ใช้เลือกเอง ให้เป็น ISO timestamp เดียวกับ createdAt
 function composeDateTimeIso_(dateText, timeText) {
   const date = parseDate_(normalizeDateInput_(dateText));
   const parts = normalizeTime_(timeText).split(':').map(Number);
@@ -1648,8 +1743,6 @@ function getPeriodRange_(period, baseDate, offset) {
   return { start: dateKey_(start), end: dateKey_(end) };
 }
 
-// คำนวณช่วงงบประมาณโดยยึดจาก "วันที่เริ่ม" (startDate) ที่ผู้ใช้ตั้งไว้จริง ๆ
-// แทนที่จะยึดตามปฏิทิน (จันทร์-อาทิตย์ / วันที่ 1 ถึงสิ้นเดือน) เสมอเหมือนเดิม
 function getPeriodRangeFromStart_(period, startDateText) {
   const today = stripTime_(new Date());
   const todayKey = dateKey_(today);
@@ -1659,6 +1752,22 @@ function getPeriodRangeFromStart_(period, startDateText) {
   }
 
   const anchor = stripTime_(parseDate_(normalizeDateInput_(startDateText || todayKey)));
+
+  if (anchor.getTime() > today.getTime()) {
+    if (period === 'weekly') {
+      const cycleEnd = new Date(anchor);
+      cycleEnd.setDate(anchor.getDate() + 6);
+      return { start: dateKey_(anchor), end: dateKey_(cycleEnd) };
+    }
+    if (period === 'monthly') {
+      const anchorDay = anchor.getDate();
+      const nextMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
+      const nextCycleStart = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), Math.min(anchorDay, daysInMonth_(nextMonth.getFullYear(), nextMonth.getMonth())));
+      const cycleEnd = new Date(nextCycleStart);
+      cycleEnd.setDate(cycleEnd.getDate() - 1);
+      return { start: dateKey_(anchor), end: dateKey_(cycleEnd) };
+    }
+  }
 
   if (period === 'weekly') {
     const diffDays = Math.floor((today.getTime() - anchor.getTime()) / 86400000);
@@ -1722,16 +1831,6 @@ function clamp_(value, min, max) {
 
 function toBoolean_(value) {
   return value === true || String(value).toLowerCase() === 'true';
-}
-
-function parseJsonObject_(value) {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(String(value));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch (error) {
-    return {};
-  }
 }
 
 function isCurrentTimeWindow_(hhmm) {

@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>FinNote</title>
   <script>
-    // ใช้ค่าที่ผู้ใช้ตั้งไว้ในเครื่อง (ถ้ามี) ไม่งั้นอิงตามการตั้งค่าของอุปกรณ์ — ทำก่อน CSS โหลดเพื่อไม่ให้จอกระพริบ
     (function () {
       try {
         var stored = localStorage.getItem('moneyflow-theme');
@@ -30,9 +29,6 @@
             coral: '#a03f2c',
             amber: '#a97a24',
           },
-          boxShadow: {
-            soft: '0 18px 50px rgba(15, 23, 42, 0.10)',
-          },
         },
       },
     };
@@ -45,8 +41,8 @@
   <?!= include('CSS'); ?>
 </head>
 <body class="antialiased">
-  <div id="toast" class="toast hidden"></div>
-  <div id="undoToast" class="undo-toast hidden">
+  <div id="toast" class="toast hidden" role="alert" aria-live="polite"></div>
+  <div id="undoToast" class="undo-toast hidden" role="alert" aria-live="assertive">
     <span id="undoToastMessage"></span>
     <button id="undoToastBtn" type="button">เลิกทำ</button>
     <div class="undo-progress"></div>
@@ -171,7 +167,7 @@
         <h1 id="viewTitle" class="masthead-title">แดชบอร์ด</h1>
       </div>
 
-      <nav class="tabs-nav">
+      <nav class="tabs-nav" aria-label="แถบนำทางหลัก">
         <button class="nav-item active" data-view="dashboard" type="button">แดชบอร์ด</button>
         <button class="nav-item" data-view="transactions" type="button">ประวัติรายการ</button>
         <button class="nav-item" data-view="budget" type="button">งบประมาณ</button>
@@ -573,8 +569,7 @@
             <div id="settingsPane-danger" class="idx-pane hidden">
               <h3 style="color:var(--danger)">โซนอันตราย</h3>
               <p class="mb-4 text-sm" style="color:var(--text-soft)">
-                การลบบัญชีจะลบรายการ งบประมาณ รายการประจำ และข้อมูลโปรไฟล์ทั้งหมดของคุณอย่างถาวร
-                เหมือนกลับไปเป็นบัญชีใหม่ที่ยังไม่เคยสมัคร ไม่สามารถกู้คืนได้
+                การลบบัญชีจะลบรายการ งบประมาณ รายการประจำ หมวดหมู่ และข้อมูลโปรไฟล์ทั้งหมดของคุณอย่างถาวร ไม่สามารถกู้คืนได้
               </p>
               <form id="deleteAccountForm" class="space-y-3">
                 <div>
@@ -668,6 +663,16 @@
               <option value="expense">รายจ่าย</option>
               <option value="income">รายรับ</option>
             </select>
+          </div>
+          <div class="form-row-2">
+            <div>
+              <label class="form-label" for="nlpDate">วันที่</label>
+              <input id="nlpDate" class="form-input" type="date" required>
+            </div>
+            <div>
+              <label class="form-label" for="nlpTime">เวลา</label>
+              <input id="nlpTime" class="form-input" type="time" required>
+            </div>
           </div>
           <p id="nlpPreview" class="parse-preview">ระบบจะแยกชื่อรายการและจำนวนเงินให้อัตโนมัติ</p>
           <button class="primary-btn w-full" type="submit">
@@ -902,7 +907,7 @@
       </section>
     </div>
 
-    <nav class="mobile-nav">
+    <nav class="mobile-nav" aria-label="แถบนำทางบนมือถือ">
       <button class="mobile-nav-item active" data-view="dashboard" type="button"><span class="ic"><i data-lucide="layout-dashboard"></i></span><span class="lbl">หน้าแรก</span></button>
       <button class="mobile-nav-item" data-view="transactions" type="button"><span class="ic"><i data-lucide="list-checks"></i></span><span class="lbl">ประวัติ</span></button>
       <button class="mobile-nav-item" data-view="budget" type="button"><span class="ic"><i data-lucide="gauge"></i></span><span class="lbl">งบ</span></button>
@@ -913,14 +918,13 @@
     </nav>
   </div>
 
-  <div id="loadingOverlay" class="loading-overlay hidden">
+  <div id="loadingOverlay" class="loading-overlay hidden" aria-hidden="true">
     <div class="loader"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <?!= include('JS'); ?>
   <script>
-    // ทำให้แต่ละกลุ่มวันในหน้า "ประวัติรายการ" ย่อ/ขยายได้ (คลิกที่หัวแถบวันที่)
     document.addEventListener('click', function (e) {
       var head = e.target.closest('.ledger-group-head');
       if (!head) return;
@@ -929,7 +933,6 @@
       group.classList.toggle('is-collapsed');
     });
 
-    // เปิด/ปิดหน้าต่าง "ตั้งงบประมาณ" และ "เพิ่มรายการอัตโนมัติ" แบบป็อปอัป
     (function () {
       function openModal(modal) {
         if (!modal) return;
@@ -947,11 +950,19 @@
         var recurringModal = document.getElementById('recurringFormModal');
         var categoryModal = document.getElementById('categoryFormModal');
 
-        if (e.target.closest('#budgetFormOpenBtn') || e.target.closest('#budgetHeroEditBtn') || e.target.closest('#budgetList .icon-chip-sm:not(.danger)')) {
-          openModal(budgetModal);
+        if (e.target.closest('#budgetFormOpenBtn')) {
+          if (window.openBudgetFormModal) {
+            window.openBudgetFormModal();
+          } else {
+            openModal(budgetModal);
+          }
         }
-        if (e.target.closest('#budgetFormModalClose') || e.target === budgetModal) {
-          closeModal(budgetModal);
+        if (e.target.closest('#budgetFormModalClose') || e.target.closest('#budgetCancelEdit') || e.target === budgetModal) {
+          if (window.closeBudgetFormModal) {
+            window.closeBudgetFormModal();
+          } else {
+            closeModal(budgetModal);
+          }
         }
 
         if (e.target.closest('#recurringFormOpenBtn') || e.target.closest('#recurringList .icon-chip-sm:not(.danger)')) {
