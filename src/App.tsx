@@ -30,7 +30,7 @@ import { ProjectExportHub } from './components/ProjectExportHub';
 type NavTab = 'roadmap' | 'export' | 'sql' | 'migrator' | 'tester' | 'vercel' | 'gas';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<NavTab>('export');
+  const [activeTab, setActiveTab] = useState<NavTab>('roadmap');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyText = (text: string, id: string) => {
@@ -40,8 +40,8 @@ export default function App() {
   };
 
   const tabs: { id: NavTab; label: string; icon: React.ElementType; badge?: string }[] = [
-    { id: 'export', label: 'ดาวน์โหลดไฟล์ขึ้น GitHub', icon: FolderArchive, badge: 'โหลด ZIP' },
     { id: 'roadmap', label: 'แผนย้ายระบบ (Roadmap)', icon: Layers },
+    { id: 'export', label: 'ดาวน์โหลดไฟล์ขึ้น GitHub', icon: FolderArchive, badge: 'โหลด ZIP' },
     { id: 'sql', label: 'SQL Schema (Supabase)', icon: Database, badge: '8 ตาราง' },
     { id: 'migrator', label: 'สคริปต์ย้ายข้อมูล (GAS)', icon: Send, badge: '1-Click' },
     { id: 'tester', label: 'ทดสอบเชื่อมต่อ (Live)', icon: Activity },
