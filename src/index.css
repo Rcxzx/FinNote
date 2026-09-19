@@ -1,1 +1,79 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --surface: #fffdf6;
+    --surface-soft: #f4ecd8;
+    --surface-raised: #fffefa;
+    --line: #ddceac;
+    --line-soft: #ece1c4;
+    --text-soft: #7c7057;
+    --text-faint: #ab9d7c;
+    --ink: #2c2618;
+
+    --brand: #3f6b52;
+    --brand-strong: #2c4c3a;
+    --brand-hover: #23392c;
+    --brand-soft: #e2e9da;
+    --brand-fill: #2c4c3a;
+    --danger: #a03f2c;
+    --income: #3f6b52;
+    --expense: #a03f2c;
+    --warning: #a97a24;
+    --neutral-grey: #ddceac;
+    --margin-rule: #c4635a;
+
+    --font-display: 'Mali', 'Sarabun', cursive;
+    --font-body: 'Sarabun', 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  .dark {
+    --surface: #1e1811;
+    --surface-soft: #16120c;
+    --surface-raised: #2a2216;
+    --line: #4a3f2c;
+    --line-soft: #362d1f;
+    --text-soft: #b8ac8e;
+    --text-faint: #7d715a;
+    --ink: #f5eedd;
+
+    --brand: #8fbf9f;
+    --brand-strong: #9fd0af;
+    --brand-hover: #bce3c6;
+    --brand-soft: #1c2a20;
+
+    --danger: #e0916f;
+    --income: #8fbf9f;
+    --expense: #e0916f;
+    --warning: #dbb06c;
+    --neutral-grey: #4a3f2c;
+    --margin-rule: #b06c5c;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--surface-soft);
+    color: var(--ink);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+.paper-grain {
+  background-image: radial-gradient(circle at 22% 24%, rgba(44, 38, 24, .025) 0, transparent 42%),
+    radial-gradient(circle at 78% 68%, rgba(44, 38, 24, .022) 0, transparent 40%),
+    repeating-linear-gradient(178deg, rgba(44, 38, 24, .015) 0 1px, transparent 1px 3px);
+}
+
+.dark .paper-grain {
+  background-image: radial-gradient(circle at 22% 24%, rgba(255, 255, 255, .03) 0, transparent 42%),
+    radial-gradient(circle at 78% 68%, rgba(255, 255, 255, .025) 0, transparent 40%),
+    repeating-linear-gradient(178deg, rgba(255, 255, 255, .015) 0 1px, transparent 1px 3px);
+}
